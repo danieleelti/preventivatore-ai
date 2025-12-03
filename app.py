@@ -240,6 +240,88 @@ Vintage Tours	Guida / Tour	Outdoor	Standard	250	Turisti, Amanti vintage	Dolce Vi
 Virtual Escape Box	Escape / Remoto	Remoto	Standard	60	Smart Workers	Online, Logica, Connessione	Escape room digitale: risolvete il mistero collaborando a distanza con il vostro avatar.	no	no	2	Illimitato	1	1,5	1,5	Risoluzione di enigmi online in videochiamata con un avatar reale.	low		https://www.teambuilding.it/project/virtual-escape-box/	https://teambuilding.it/preventivi/schede/ita/Virtual Escape Box - TeamBuilding-it.pdf	https://teambuilding.it/preventivi/schede/ita/Virtual Escape Box - TeamBuilding-it.pptx	https://teambuilding.it/preventivi/schede/eng/Virtual Escape Box - TeamBuilding-it-eng.pdf	https://teambuilding.it/preventivi/schede/eng/Virtual Escape Box - TeamBuilding-it - eng.pptx
 Yacht Day	Lusso / Mare	Outdoor	Standard	250	VIP, Top Management	Mare, Lusso, Sole	Relax e lusso in mare aperto: un'esperienza esclusiva per chi punta all'eccellenza.	no	no	1	10	6	8	6	Giornata in barca a motore di lusso con skipper e attività  a bordo.	medium	Prezzo indicativo, dipende molto dalla stagione, dalla località e il numero dei partecipanti. Indispensabile approfondimento in trattativa.	https://www.teambuilding.it/project/yacht-day/	https://teambuilding.it/preventivi/schede/ita/Yacht Day - TeamBuilding-it.pdf	https://teambuilding.it/preventivi/schede/ita/Yacht Day - TeamBuilding-it.pptx	https://teambuilding.it/preventivi/schede/eng/Yacht Day - TeamBuilding-it-eng.pdf	https://teambuilding.it/preventivi/schede/eng/Yacht Day - TeamBuilding-it-eng.pptx"""
 
+# --- CODICE TECNICO (Non toccare nulla qui sotto) ---
+genai.configure(api_key=api_key)
+
+generation_config = {
+  "temperature": 0.0, 
+  "top_p": 0.95,
+  "top_k": 40,
+  "max_output_tokens": 8192,
+}
+
+model = genai.GenerativeModel(
+  model_name="gemini-1.5-pro",
+  generation_config=generation_config,
+  system_instruction=SYSTEM_PROMPT,
+)
+
+st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", layout="centered")
+
+# Login Semplice
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔒 Area Riservata")
+    pwd = st.text_input("Inserisci Password Staff", type="password")
+    if st.button("Accedi"):
+        if pwd == PASSWORD_SEGRETA:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Password errata")
+    st.stop()
+
+# App Vera e Propria
+st.title("🏆 Preventivatore AI")
+st.caption("Assistente Virtuale Senior - Uso Interno")
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+    # Messaggio di benvenuto automatico (simulato)
+    welcome = "Ciao! Sono pronto. Dimmi numero pax, data e obiettivo."
+    st.session_state.messages.append({"role": "model", "content": welcome})
+
+# Mostra cronologia
+for message in st.session_state.messages:
+    role = message["role"]
+    with st.chat_message(role):
+        st.markdown(message["content"])
+
+# Input Utente
+if prompt := st.chat_input("Scrivi qui la richiesta..."):
+    # 1. Aggiungi user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 2. Gestione RESET
+    if prompt.lower().strip() in ["reset", "nuovo", "cancella", "stop"]:
+        st.session_state.messages = []
+        st.rerun()
+
+    # 3. Genera risposta AI
+    with st.chat_message("model"):
+        with st.spinner("Calcolo in corso..."):
+            try:
+                # Costruiamo la history per Gemini
+                history_gemini = []
+                for m in st.session_state.messages:
+                    if m["role"] != "model": # Evitiamo duplicati strani nel buffer
+                        history_gemini.append({"role": "user", "parts": [m["content"]]})
+                    else:
+                        history_gemini.append({"role": "model", "parts": [m["content"]]})
+                
+                # Togliamo l'ultimo messaggio user appena aggiunto perché lo inviamo ora
+                chat = model.start_chat(history=history_gemini[:-1])
+                response = chat.send_message(prompt)
+                
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "model", "content": response.text})
+                
+            except Exception as e:
+                st.error(f"Errore: {e}")
 
 
 
