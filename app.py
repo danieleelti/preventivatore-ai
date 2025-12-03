@@ -8,6 +8,18 @@ st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", l
 # INSERISCI LA TUA API KEY QUI SOTTO
 api_key = st.secrets["GOOGLE_API_KEY"] if "GOOGLE_API_KEY" in st.secrets else "AIzaSyAVusNc37fmJWNoIN4Hv9-W_JsClC8tCSQ"
 
+# --- BLOCCO DEBUG (Da cancellare dopo aver risolto) ---
+st.subheader("🔍 Verifica Modelli Disponibili")
+try:
+    st.write("Sto chiedendo a Google quali modelli posso usare...")
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            st.code(f"Nome Modello: {m.name}")
+except Exception as e:
+    st.error(f"Errore nel listare i modelli: {e}")
+st.divider()
+# -----------------------------------------------------
+
 # PASSWORD PER LO STAFF
 PASSWORD_SEGRETA = "TeamBuilding2025#"
 
@@ -322,6 +334,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
 
