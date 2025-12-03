@@ -4,9 +4,6 @@ import google.generativeai as genai
 # --- 1. QUESTA DEVE ESSERE LA PRIMA RIGA DI STREAMLIT ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", layout="centered")
 
-# --- CONFIGURAZIONE ---
-# INSERISCI LA TUA API KEY QUI SOTTO
-api_key = st.secrets["GOOGLE_API_KEY"] if "GOOGLE_API_KEY" in st.secrets else "AIzaSyDXCIEnmHLTm4IvV9PD-iDfjHa-G7xZ9jQ"
 
 # PASSWORD PER LO STAFF
 PASSWORD_SEGRETA = "TeamBuilding2025#"
@@ -322,6 +319,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
 
