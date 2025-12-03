@@ -263,7 +263,7 @@ generation_config = {
 }
 
 model = genai.GenerativeModel(
-  Nome Modello: models/gemini-3-pro-preview,
+  model_name="gemini-3-pro-preview",
   generation_config=generation_config,
   system_instruction=SYSTEM_PROMPT,
 )
@@ -334,6 +334,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
 
