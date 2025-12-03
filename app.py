@@ -260,7 +260,7 @@ safety_settings = {
 }
 
 model = genai.GenerativeModel(
-  model_name="gemini-flash-latest",
+  model_name="gemini-3-pro-preview",
   generation_config=generation_config,
   system_instruction=SYSTEM_PROMPT,
   safety_settings=safety_settings, # <--- Questa è la novità importante!
@@ -332,6 +332,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
 
