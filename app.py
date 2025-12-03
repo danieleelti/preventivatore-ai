@@ -3,7 +3,7 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # --- 1. QUESTA DEVE ESSERE LA PRIMA RIGA DI STREAMLIT ---
-st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", layout="centered")
+st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
 # --- CONFIGURAZIONE API ---
 # La chiave viene letta dai "Secrets" di Streamlit, non scriverla qui!
@@ -284,7 +284,7 @@ if not st.session_state.authenticated:
     st.stop()
 
 # App Vera e Propria
-st.title("🏆 Preventivatore AI")
+st.title("🦁 Preventivatore AI")
 st.caption("Assistente Virtuale Senior - Uso Interno")
 
 if "messages" not in st.session_state:
@@ -332,6 +332,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
 
