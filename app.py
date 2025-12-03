@@ -1,6 +1,9 @@
 import streamlit as st
 import google.generativeai as genai
 
+# --- 1. QUESTA DEVE ESSERE LA PRIMA RIGA DI STREAMLIT ---
+st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", layout="centered")
+
 # --- CONFIGURAZIONE ---
 # INSERISCI LA TUA API KEY QUI SOTTO
 api_key = st.secrets["GOOGLE_API_KEY"] if "GOOGLE_API_KEY" in st.secrets else "AIzaSyAVusNc37fmJWNoIN4Hv9-W_JsClC8tCSQ"
@@ -236,6 +239,7 @@ Vertical Garden	Green / Costruzione	Indoor	Standard	95	Green, Ufficio	Verde, Des
 Vintage Tours	Guida / Tour	Outdoor	Standard	250	Turisti, Amanti vintage	Dolce Vita, Motori, Panorama	Un tuffo nella Dolce Vita: alla guida di auto e moto d'epoca nei luoghi più belli d'Italia.	no	no	2	50	2	4	3	Tour guidati con auto d'epoca (Fiat 500) o Vespe in località  turistiche.	low		https://www.teambuilding.it/project/vintage-tour/	https://teambuilding.it/preventivi/schede/ita/Vintage Tours - TeamBuilding-it.pdf	https://teambuilding.it/preventivi/schede/ita/Vintage Tours - TeamBuilding-it.pptx	https://teambuilding.it/preventivi/schede/eng/Vintage Tours - TeamBuilding-it-eng.pdf	https://teambuilding.it/preventivi/schede/eng/Vintage Tours - TeamBuilding-it-eng.pptx
 Virtual Escape Box	Escape / Remoto	Remoto	Standard	60	Smart Workers	Online, Logica, Connessione	Escape room digitale: risolvete il mistero collaborando a distanza con il vostro avatar.	no	no	2	Illimitato	1	1,5	1,5	Risoluzione di enigmi online in videochiamata con un avatar reale.	low		https://www.teambuilding.it/project/virtual-escape-box/	https://teambuilding.it/preventivi/schede/ita/Virtual Escape Box - TeamBuilding-it.pdf	https://teambuilding.it/preventivi/schede/ita/Virtual Escape Box - TeamBuilding-it.pptx	https://teambuilding.it/preventivi/schede/eng/Virtual Escape Box - TeamBuilding-it-eng.pdf	https://teambuilding.it/preventivi/schede/eng/Virtual Escape Box - TeamBuilding-it - eng.pptx
 Yacht Day	Lusso / Mare	Outdoor	Standard	250	VIP, Top Management	Mare, Lusso, Sole	Relax e lusso in mare aperto: un'esperienza esclusiva per chi punta all'eccellenza.	no	no	1	10	6	8	6	Giornata in barca a motore di lusso con skipper e attività  a bordo.	medium	Prezzo indicativo, dipende molto dalla stagione, dalla località e il numero dei partecipanti. Indispensabile approfondimento in trattativa.	https://www.teambuilding.it/project/yacht-day/	https://teambuilding.it/preventivi/schede/ita/Yacht Day - TeamBuilding-it.pdf	https://teambuilding.it/preventivi/schede/ita/Yacht Day - TeamBuilding-it.pptx	https://teambuilding.it/preventivi/schede/eng/Yacht Day - TeamBuilding-it-eng.pdf	https://teambuilding.it/preventivi/schede/eng/Yacht Day - TeamBuilding-it-eng.pptx"""
+
 
 
 
