@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # --- 1. QUESTA DEVE ESSERE LA PRIMA RIGA DI STREAMLIT ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", layout="centered")
@@ -250,10 +251,19 @@ generation_config = {
   "max_output_tokens": 8192,
 }
 
+# --- CONFIGURAZIONE SICUREZZA (Disattiva filtri) ---
+safety_settings = {
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+}
+
 model = genai.GenerativeModel(
-  model_name="gemini-3-pro-preview",
+  model_name="gemini-flash-latest",
   generation_config=generation_config,
   system_instruction=SYSTEM_PROMPT,
+  safety_settings=safety_settings, # <--- Questa è la novità importante!
 )
 
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", layout="centered")
@@ -322,6 +332,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
 
