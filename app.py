@@ -266,7 +266,7 @@ model = genai.GenerativeModel(
   safety_settings=safety_settings, # <--- Questa è la novità importante!
 )
 
-st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🏆", layout="centered")
+st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
 # Login Semplice
 if "authenticated" not in st.session_state:
@@ -332,6 +332,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
 
