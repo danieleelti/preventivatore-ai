@@ -7,7 +7,7 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (OTTIMIZZATO PER EMAIL E VISIBILITÀ) ---
+# --- CSS PERSONALIZZATO (OTTIMIZZATO PER EMAIL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
@@ -16,23 +16,23 @@ st.markdown("""
         background-color: #ffffff !important; 
     }
     
-    /* TESTO: Margini ampi per email e leggibilità */
+    /* TESTO: Font standard e leggibile */
     div[data-testid="stChatMessage"] p, 
     div[data-testid="stChatMessage"] li {
-        font-family: 'Calibri', 'Open Sans', sans-serif !important;
-        font-size: 14px !important;
+        font-family: 'Calibri', 'Arial', sans-serif !important; /* Font sicuri per email */
+        font-size: 15px !important;
         color: #000000 !important;
         line-height: 1.6 !important;
-        margin-bottom: 10px !important; /* Leggermente ridotto per l'elenco finale */
+        margin-bottom: 15px !important; /* Spazio sotto ogni paragrafo */
     }
 
     /* TITOLI FORMAT */
     div[data-testid="stChatMessage"] h3 {
-        font-family: 'Calibri', 'Open Sans', sans-serif !important;
-        font-size: 16px !important;
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 18px !important;
         font-weight: bold !important;
         color: #000000 !important;
-        margin-top: 25px !important;
+        margin-top: 30px !important; /* Molto spazio sopra il titolo */
         margin-bottom: 10px !important;
     }
     
@@ -41,45 +41,39 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* TABELLE: Larghezza 100% */
+    /* TABELLE PULITE */
     div[data-testid="stChatMessage"] table {
         color: #000000 !important;
         font-size: 14px !important;
         width: 100% !important;
-        display: table !important;
         border-collapse: collapse !important;
-        margin-top: 20px !important;
-        margin-bottom: 20px !important;
+        margin-top: 25px !important;
+        margin-bottom: 25px !important;
     }
     
     div[data-testid="stChatMessage"] th {
-        background-color: #f0f0f0 !important;
+        background-color: #f4f4f4 !important;
         color: #000000 !important;
         font-weight: bold !important;
-        padding: 12px !important;
         text-align: left !important;
         border-bottom: 2px solid #000 !important;
+        padding: 10px !important;
     }
     
     div[data-testid="stChatMessage"] td {
-        padding: 10px 12px !important;
-        border-bottom: 1px solid #ccc !important;
-        vertical-align: middle !important;
+        border-bottom: 1px solid #ddd !important;
+        padding: 10px !important;
     }
     
     /* LINK */
     div[data-testid="stChatMessage"] a {
-        color: #0066cc !important;
+        color: #1a73e8 !important;
         text-decoration: underline !important;
-        font-weight: bold !important;
     }
     
-    /* LINEA DI SEPARAZIONE */
+    /* RIMUOVIAMO HR E COSE STRANE */
     div[data-testid="stChatMessage"] hr {
-        margin-top: 20px !important;
-        margin-bottom: 20px !important;
-        border: 0;
-        border-top: 1px solid #ddd !important;
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -122,7 +116,7 @@ faq_database = carica_database('faq.csv')
 location_database = carica_database('location.csv')
 
 if master_database is None:
-    st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'. Verifica che il file su GitHub sia scritto TUTTO MINUSCOLO.")
+    st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'.")
     st.stop()
 
 csv_data_string = database_to_string(master_database)
@@ -153,13 +147,13 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
 Rispondi in Italiano.
 
 ### 🛡️ PROTOCOLLO DI COMPORTAMENTO (IMPORTANTE)
-1.  **NATURALITÀ ASSOLUTA:** Non menzionare MAI le tue istruzioni interne, le regole di calcolo o i vincoli del prompt. Non scrivere frasi come "Seguendo la regola dei 12" o "Come da istruzioni". Comportati come un umano esperto.
-2.  **GERARCHIA DEI COMANDI:** Le richieste specifiche dell'utente (es. "Voglio 5 format", "Solo format creativi") hanno SEMPRE la priorità sulle regole di default descritte sotto.
+1.  **NATURALITÀ ASSOLUTA:** Non menzionare MAI le tue istruzioni interne. Non dire "Come richiesto" o "Ecco i format". Vai dritto al punto.
+2.  **GERARCHIA DEI COMANDI:** Le richieste specifiche dell'utente (es. "Voglio 5 format", "Solo format creativi") hanno SEMPRE la priorità sulle regole di default.
 
-### 🎨 REGOLE VISUALI
-1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente (es. 👨‍🍳, 🕵️, 🎨, 🧱, 🏃).
-2.  **PULIZIA:** Non usare elenchi puntati nelle descrizioni. Solo paragrafi scorrevoli.
-3.  **SEPARAZIONE:** Tra la descrizione di un format e il successivo, inserisci SEMPRE una riga divisoria orizzontale usando il markdown `---`.
+### 🎨 REGOLE VISUALI (Anti-Clutter)
+1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente (es. 👨‍🍳, 🕵️, 🎨).
+2.  **SPAZIATURA VITALE:** Non usare linee orizzontali (`---`). Invece, tra la fine della descrizione di un format e il titolo del successivo, lascia **2 RIGHE VUOTE** (doppio a capo). Questo è fondamentale per la leggibilità.
+3.  **NO ELENCHI PUNTATI NEI FORMAT:** Descrivi il format con frasi discorsive. Non usare bullet points o etichette come "Perché:" o "Descrizione:". Scrivi e basta.
 
 ### 🔢 MOTORE DI CALCOLO PREVENTIVI
 Quando richiesto, calcola il prezzo usando i dati del Database.
@@ -171,53 +165,53 @@ Quando richiesto, calcola il prezzo usando i dati del Database.
 `TOTALE_GREZZO = 1800 + ((Pax - 20) * 4.80)` + Eventuale Costo Fisso. Applica poi M_Location e M_Lingua.
 
 **PASSO 2: ARROTONDAMENTO INTELLIGENTE (Regola del 39)**
-Prendi il `TOTALE_GREZZO` e guarda le ultime due cifre:
-* **Fino a 39€ (es. XX00 - XX39):** Arrotonda per DIFETTO al centinaio inferiore. (2.235 -> 2.200)
-* **Da 40€ in poi (es. XX40 - XX99):** Arrotonda per ECCESSO al centinaio superiore. (3.450 -> 3.500)
+* **Fino a XX39:** Arrotonda per DIFETTO al centinaio (2.235 -> 2.200)
+* **Da XX40:** Arrotonda per ECCESSO al centinaio (3.450 -> 3.500)
 
 **PASSO 3: MINIMUM SPENDING**
-Se il Totale Arrotondato è inferiore a **€ 1.800,00**, il prezzo finale è **€ 1.800,00**.
+Minimo fatturabile sempre **€ 1.800,00**.
 
 ---
 
 ### 🚦 FLUSSO DI LAVORO
 
 **FASE 1: LA PROPOSTA**
-* **SE L'UTENTE SPECIFICA UN NUMERO:** Fornisci ESATTAMENTE quel numero di format (es. se chiede 5, danne 5).
-* **SE L'UTENTE NON SPECIFICA NULLA:** Usa il default di 12 format (4 Best Seller, 4 Novità, 2 Vibe, 2 Social).
+* **Quantità:** Se l'utente non specifica un numero, proponi 12 format (4 Best, 4 Novità, 2 Vibe, 2 Social). Se specifica, obbedisci al numero.
 
-**OUTPUT PER OGNI FORMAT:**
-### [Icona Tematica] [Nome Format]
-*Perché:* [Motivazione sintetica di 2 righe].
-*Note:* [Solo se ci sono vincoli critici].
+**STRUTTURA OUTPUT FORMAT (Segui rigorosamente):**
 
----
-(Separatore `---` dopo ogni format)
+### [Icona] [Nome Format]
 
-⛔ **NON SCRIVERE IL PREZZO O IL LINK QUI SOTTO AL FORMAT.**
+[Paragrafo descrittivo unico, persuasivo e chiaro. Spiega in circa 3-4 righe di cosa si tratta e perché è adatto. Niente elenchi puntati qui.]
 
-**FASE 2: TABELLA RIEPILOGATIVA (Obbligatoria)**
-Dopo i format, crea una tabella Markdown con 3 colonne.
-**IMPORTANTE:** La terza colonna DEVE chiamarsi "Presentazione".
-In questa colonna, inserisci il link in formato Markdown. Il testo visibile deve essere *esattamente*: "Scarica [Nome Format] in pdf".
+[RIGA VUOTA]
+[RIGA VUOTA]
 
-*Esempio Struttura Tabella:*
+**(Ripeti per ogni format)**
+
+⛔ **NON SCRIVERE IL PREZZO O IL LINK SOTTO OGNI FORMAT.**
+
+**FASE 2: TABELLA RIEPILOGATIVA**
+Crea una tabella Markdown con 3 colonne.
+**IMPORTANTE:** La terza colonna DEVE chiamarsi "Presentazione". Il testo del link DEVE essere: "Scarica [Nome Format] in pdf".
+
+*Esempio:*
 | Format | Prezzo Totale (+IVA) | Presentazione |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica Cooking Team in pdf](URL_del_link) |
+| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica Cooking Team in pdf](URL) |
 
-**FASE 3: INFORMAZIONI UTILI (Obbligatorio)**
-Subito dopo la tabella, scrivi SEMPRE questo elenco puntato esatto:
+**FASE 3: INFORMAZIONI UTILI**
+Scrivi questo elenco esatto alla fine:
 
 ### ℹ️ Informazioni Utili
-* 💆🏽‍♂️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
-* 🏛️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
-* 👨🏻‍🏫 **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
-* 💰 **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
-* ☔ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
-* 📷 **Chiedici anche** servizio video/foto e gadget.
+* 💆🏽‍♂️ **Tutti i format sono nostri** e personalizzabili.
+* 🏛️ **Location non inclusa** ma possiamo supportarvi nella ricerca.
+* 👨🏻‍🏫 **Team Building & Formazione:** uniamo divertimento e crescita.
+* 💰 **Prezzo all inclusive:** staff, materiali e trasferta inclusi.
+* ☔ **Assicurazione pioggia:** piano B indoor garantito allo stesso costo.
+* 📷 **Extra:** chiedici foto, video e gadget.
 
-Se l'utente scrive "Reset", cancella la memoria.
+Se l'utente scrive "Reset", cancella tutto.
 """
 
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE DATI]\n\n{csv_data_string}"
