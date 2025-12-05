@@ -2,16 +2,43 @@ import streamlit as st
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import pandas as pd
+import csv
+import os
 
-# --- IMPORT DATABASE ---
-# Questo importerà le variabili già "piene" di dati dal file loader.py
-from loader import master_database
-from loader import faq_database
-from loader import location_database
+# Usiamo la cache di Streamlit: carica i file una volta sola e il bot scheggia!
+@st.cache_data(show_spinner=False)
+def carica_csv_interno(nome_file):
+    # Cerchiamo il file nella cartella di lavoro corrente (dove gira lo script)
+    percorso_completo = os.path.join(os.getcwd(), nome_file)
+    
+    if not os.path.exists(percorso_completo):
+        st.error(f"⚠️ ERRORE FILE: Non trovo '{nome_file}' in: {percorso_completo}")
+        # Interrompiamo tutto se manca il file principale
+        if nome_file == "MasterTb.csv":
+            st.stop()
+        return []
+    
+    lista_dati = []
+    try:
+        with open(percorso_completo, mode='r', encoding='utf-8') as file:
+            # IMPORTANTE: Google Sheets esporta con virgola (,)
+            reader = csv.DictReader(file, delimiter=',') 
+            for riga in reader:
+                lista_dati.append(riga)
+        return lista_dati
+    except Exception as e:
+        st.error(f"❌ Errore leggendo {nome_file}: {e}")
+        return []
 
-# Ora puoi usare 'master_database' esattamente come facevi prima
-# Esempio di test (puoi cancellarlo dopo):
-# print(f"Il primo elemento del master è: {master_database[0]}")
+# Carichiamo i 3 database nelle variabili
+master_database = carica_csv_interno('MasterTb.csv')
+faq_database = carica_csv_interno('faq.csv')
+location_database = carica_csv_interno('location.csv')
+
+# Debug visivo (opzionale: ti dice a video se ha caricato)
+if master_database:
+    print(f"✅ OK: MasterTb caricato ({len(master_database)} righe)")
+# --- FINE NUOVO BLOCCO DATABASE ---
 
 # --- 1. QUESTA DEVE ESSERE LA PRIMA RIGA DI STREAMLIT ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
@@ -228,23 +255,3 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
-
-# test debug
-import os
-
-print("--- DIAGNOSTICA FILE ---")
-cartella_corrente = os.getcwd()
-print(f"Il bot sta lavorando in questa cartella: {cartella_corrente}")
-
-print("Ecco tutti i file che il bot riesce a vedere qui:")
-files = os.listdir(cartella_corrente)
-for f in files:
-    print(f" - {f}")
-    
-if "MasterTb.csv" in files:
-    print("\n✅ VEDO 'MasterTb.csv'! Il problema è altrove.")
-else:
-    print("\n❌ NON VEDO 'MasterTb.csv'. Controlla se il nome è scritto diverso nella lista sopra.")
-print("------------------------")
-
-
