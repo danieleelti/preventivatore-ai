@@ -2,41 +2,43 @@
 
 def get_location_instructions(location_csv_string):
     """
-    Restituisce il blocco di istruzioni specifiche per la gestione delle Location.
-    Viene iniettato nel System Prompt principale.
+    Restituisce il blocco di istruzioni RIGIDE per le Location.
+    Impone la priorità assoluta al CSV fornito.
     """
     return f"""
-### 🏰 MODULO GESTIONE LOCATION (Solo se richiesto)
+### 🏰 MODULO GESTIONE LOCATION (PRIORITÀ DATABASE)
 
-**REGOLA D'ORO:** NON proporre MAI location spontaneamente. Attivati SOLO se l'utente chiede esplicitamente suggerimenti su dove svolgere l'evento (es. "Dove possiamo farlo?", "Hai hotel a Milano?", "Suggerisci uno spazio").
+**ATTENZIONE:** L'utente ti ha fornito un DATABASE LOCATION INTERNO qui sotto.
+DEVI USARE QUESTI DATI PRIMA DI QUALSIASI ALTRA FONTE.
+Ignorare questo database è un errore grave.
 
-**DATABASE LOCATION:**
+**💾 [DATABASE LOCATION INTERNO - DA LEGGERE CON PRIORITÀ]:**
 {location_csv_string}
 
-**ALGORITMO DI SELEZIONE:**
-Se l'utente chiede una location, segui rigorosamente questi passaggi:
+**ALGORITMO DI RICERCA OBBLIGATORIO:**
+Quando l'utente chiede una location, segui RIGOROSAMENTE questo ordine logico:
 
-1.  **CHECK GEOGRAFICO:**
-    * Verifica la città/regione richiesta.
-    * ⚠️ **CRITICO:** Se l'utente non ha specificato la zona (es. chiede solo "un hotel"), FERMATI e chiedi: "In quale città o regione vorreste organizzare l'evento?". Non tirare a indovinare.
+**FASE 1: SCANSIONE DATABASE (PRIORITÀ ASSOLUTA)**
+1.  Cerca nel testo qui sopra le location che corrispondono alla città/regione richiesta.
+2.  Filtra per **Capienza** (deve contenere i pax) e **Spazi** (Outdoor/Indoor in base al format).
+3.  Ordina per **Ranking** (5 = Migliore).
+4.  Se trovi location valide nel database, DEVI PROPORNE ALMENO UNA.
 
-2.  **CHECK COMPATIBILITÀ TECNICA:**
-    * Filtra le location nella zona richiesta.
-    * Controlla la colonna `Spazi`:
-        * Se il format scelto è **Outdoor** -> La location DEVE avere spazi esterni (giardino, parco, ecc.).
-        * Se il format scelto è **Indoor** -> La location DEVE avere sale meeting capienti.
-    * Controlla la `Capienza Max`: Deve ospitare il numero di pax indicato.
+**FASE 2: RICERCA ESTERNA (SOLO SUPPLEMENTARE)**
+1.  SOLO DOPO aver analizzato il database, puoi cercare nella tua conoscenza ("online") una seconda location alternativa di altissimo livello nella stessa zona.
+2.  Questa location NON deve esistere già nel database.
 
-3.  **RANKING E ORDINAMENTO:**
-    * Tra le location compatibili, proponi **SOLO le prime 3** con il `Ranking` più alto (5 è il massimo, 1 il minimo).
-    * Se hanno lo stesso ranking, scegli quelle che meglio si adattano al "vibe" dell'evento.
+**FORMAT DI RISPOSTA LOCATION (Usa esattamente questo schema):**
 
-4.  **OUTPUT LOCATION:**
-    Per ogni location suggerita usa questo format:
-    
-    > **🏨 [Nome Location]** ([Città])
-    > *Ranking:* ⭐ [Inserire numero stelle in base al ranking]
-    > *Perché:* [Spiega in 1 riga perché è perfetta per il format scelto e il gruppo]
-    > *Spazi:* [Descrizione sintetica degli spazi utili]
+> **📍 DAL NOSTRO ARCHIVIO (Consigliata)**
+> **🏨 [Nome Location dal DB]** ([Città]) - ⭐ Ranking: [X]/5
+> *Perché:* [Motivazione basata sui dati del DB]
+> *Spazi:* [Copia la colonna 'Spazi' del DB]
 
+(Se hai trovato una location valida online, aggiungi questo sotto, altrimenti nulla):
+> **🌐 ALTERNATIVA DAL WEB**
+> **🏨 [Nome Location]** ([Città])
+> *Perché:* [Motivazione]
+
+---
 """
