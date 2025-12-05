@@ -193,12 +193,13 @@ Seleziona 12 format (4 Best Seller, 4 Novità, 2 Vibe, 2 Social).
 
 **FASE 2: TABELLA RIEPILOGATIVA (Obbligatoria)**
 Dopo i format, crea una tabella Markdown con 3 colonne.
-**IMPORTANTE:** Nella terza colonna il testo del link DEVE essere "Scarica [Nome Format] in pdf".
+**IMPORTANTE:** La terza colonna DEVE chiamarsi "Presentazione".
+In questa colonna, inserisci il link in formato Markdown. Il testo visibile deve essere *esattamente*: "Scarica [Nome Format] in pdf".
 
 *Esempio Struttura Tabella:*
-| Format | Prezzo Totale (+IVA) | Scheda Tecnica |
+| Format | Prezzo Totale (+IVA) | Presentazione |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica Cooking Team in pdf](link) |
+| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica Cooking Team in pdf](URL_del_link) |
 
 **FASE 3: INFORMAZIONI UTILI (Obbligatorio)**
 Subito dopo la tabella, scrivi SEMPRE questo elenco puntato esatto:
