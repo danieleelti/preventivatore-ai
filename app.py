@@ -3,6 +3,16 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import pandas as pd
 
+# --- IMPORT DATABASE ---
+# Questo importerà le variabili già "piene" di dati dal file loader.py
+from loader import master_database
+from loader import faq_database
+from loader import location_database
+
+# Ora puoi usare 'master_database' esattamente come facevi prima
+# Esempio di test (puoi cancellarlo dopo):
+# print(f"Il primo elemento del master è: {master_database[0]}")
+
 # --- 1. QUESTA DEVE ESSERE LA PRIMA RIGA DI STREAMLIT ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
@@ -218,5 +228,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
