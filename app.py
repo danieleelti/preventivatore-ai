@@ -226,7 +226,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
 
     # 3. Genera risposta AI
     with st.chat_message("model"):
-        with st.spinner("Elaborazione con Gemini 2.0..."):
+        with st.spinner("Elaborazione con Gemini 3.0..."):
             try:
                 history_gemini = []
                 for m in st.session_state.messages:
@@ -243,4 +243,5 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
