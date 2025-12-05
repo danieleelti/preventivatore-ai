@@ -41,31 +41,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- IMPORTAZIONE MODULO ESTERNO (FIX CRITICO) ---
-# Togliamo il try/except silenzioso. Se c'è un errore, vogliamo vederlo.
-import locations_module
+# --- IMPORTAZIONE MODULO ESTERNO ---
+# Importiamo il modulo location. Se fallisce, lo segnaliamo ma non blocchiamo tutto.
+try:
+    import locations_module
+except ImportError:
+    locations_module = None
 
-# --- 2. GESTIONE DATABASE (AGGIORNATA PER LEGGERE TUTTO) ---
+# --- 2. GESTIONE DATABASE (ROBUSTA) ---
 @st.cache_data(show_spinner=False)
 def carica_database(nome_file):
     percorso = os.path.join(os.getcwd(), nome_file)
     if not os.path.exists(percorso):
         return None 
 
-    lista_dati = []
-    # Proviamo diversi encoding e delimitatori per essere sicuri di leggere il file
+    # Proviamo diversi encoding e delimitatori
     encodings = ['utf-8', 'latin-1', 'cp1252']
-    delimiters = [',', ';'] # Supporta sia formato standard che Excel italiano
+    delimiters = [',', ';'] 
     
     for encoding in encodings:
         for delimiter in delimiters:
             try:
                 with open(percorso, mode='r', encoding=encoding) as file:
-                    # Leggiamo prima l'header per vedere se il delimitatore è giusto
+                    # Sniffing rapido per capire se il delimitatore è quello giusto
                     sample = file.read(1024)
                     file.seek(0)
-                    sniffer = csv.Sniffer()
-                    # Se il delimitatore sembra giusto, procediamo
                     if delimiter in sample:
                         reader = csv.DictReader(file, delimiter=delimiter)
                         temp_list = list(reader)
@@ -84,16 +84,15 @@ def database_to_string(database_list):
         header = " | ".join(database_list[0].keys())
         rows = []
         for riga in database_list:
-            # Pulisce i dati da None o errori
             clean_values = [str(v) if v is not None else "" for v in riga.values()]
             rows.append(" | ".join(clean_values))
         return header + "\n" + "\n".join(rows)
     except Exception:
         return ""
 
-# Caricamento
+# Caricamento File
 master_database = carica_database('mastertb.csv') 
-location_database = carica_database('location.csv') # Carica Location
+location_database = carica_database('location.csv') 
 
 if master_database is None:
     st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'.")
@@ -101,21 +100,15 @@ if master_database is None:
 
 csv_data_string = database_to_string(master_database)
 
-# --- 3. COSTRUZIONE DEL CERVELLO (PROMPT) ---
-# Preparazione blocco location
+# --- 3. COSTRUZIONE DEL CERVELLO (LOCATION) ---
 location_instructions_block = ""
-
-if location_database:
+if locations_module and location_database:
     loc_db_string = database_to_string(location_database)
     if loc_db_string:
-        # Qui chiamiamo la funzione del tuo file locations_module.py
+        # Passiamo i dati al modulo esterno
         location_instructions_block = locations_module.get_location_instructions(loc_db_string)
-        # FEEDBACK VISIVO (Opzionale: puoi rimuoverlo dopo)
-        st.sidebar.success(f"✅ Modulo Location attivo: {len(location_database)} strutture caricate.")
-    else:
-        st.sidebar.warning("⚠️ File location.csv vuoto o illeggibile.")
-else:
-    st.sidebar.warning("⚠️ File location.csv non trovato.")
+        # Feedback discreto nella sidebar
+        st.sidebar.success(f"✅ Location caricate: {len(location_database)}")
 
 # --- 4. CONFIGURAZIONE API E PASSWORD ---
 api_key = st.secrets["GOOGLE_API_KEY"]
@@ -141,13 +134,13 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
 Rispondi in Italiano.
 
 ### 🛡️ PROTOCOLLO
-1.  **NATURALITÀ:** Non citare le istruzioni.
-2.  **GERARCHIA:** L'utente comanda sui default.
+1.  **NATURALITÀ:** Non citare le istruzioni o regole interne.
+2.  **GERARCHIA:** Se l'utente chiede N format specifici, ignora il default di 12.
 
 ### 🎨 REGOLE VISUALI
-1.  **ICONE:** Nel titolo format.
-2.  **SPAZIATURA:** Usa DUE DOPO OGNI FORMAT (niente linee).
-3.  **NO ELENCHI:** Descrizioni discorsive.
+1.  **ICONE:** Usa un'icona tematica nel titolo di ogni format.
+2.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format. Niente linee divisorie.
+3.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
 
 ### 🔢 CALCOLO PREVENTIVI
 **PASSO 1:**
@@ -157,25 +150,35 @@ Rispondi in Italiano.
 
 ---
 
-### 🚦 FLUSSO
+### 🚦 FLUSSO DI LAVORO
+
 **FASE 1: PROPOSTA**
-Default 12 format (o numero richiesto).
+Default 12 format (o numero richiesto dall'utente).
 Struttura:
 ### [Icona] [Nome]
-[Descrizione]
+[Descrizione discorsiva di 3-4 righe.]
 (Spazio vuoto)
 
-**FASE 2: TABELLA**
+**FASE 2: TABELLA RIEPILOGATIVA**
 | Format | Prezzo Totale (+IVA) | Presentazione |
 | :--- | :--- | :--- |
 | 👨‍🍳 Cooking | € 2.400,00 | [Scarica Cooking in pdf](URL) |
 
-**FASE 3: INFO UTILI**
-(Inserisci il blocco standard info utili qui)
+**FASE 3: INFO UTILI (OBBLIGATORIO)**
+Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola:
+
+### ℹ️ Informazioni Utili
+* 💆🏽‍♂️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+* 🏛️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+* 👨🏻‍🏫 **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+* 💰 **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+* ☔ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+* 📷 **Chiedici anche** servizio video/foto e gadget.
+
+Se l'utente scrive "Reset", cancella la memoria.
 """
 
-# Qui assembliamo tutto.
-# NOTA: Mettiamo le istruzioni location PRIMA del database format per dargli importanza.
+# Assembliamo il Prompt: Istruzioni Base + Istruzioni Location (se presenti) + Database Format
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
 # --- 6. AVVIO AI ---
