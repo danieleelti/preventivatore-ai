@@ -4,11 +4,11 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import csv
 import os
 
-# --- IMPORT MODULO LOCATION (MODIFICA 1) ---
+# --- IMPORT MODULO LOCATION ---
 try:
     import locations_module
 except ImportError:
-    st.warning("⚠️ File 'locations_module.py' non trovato. Le funzioni Location sono disabilitate.")
+    # Se manca il file, creiamo una variabile vuota per evitare crash
     locations_module = None
 
 # --- 1. CONFIGURAZIONE PAGINA ---
@@ -130,7 +130,7 @@ csv_data_string = database_to_string(master_database)
 if faq_database is None: faq_database = [] 
 if location_database is None: location_database = []
 
-# --- INTEGRAZIONE LOCATION (MODIFICA 2) ---
+# --- INTEGRAZIONE LOCATION ---
 # Prepariamo la stringa delle istruzioni location SOLO se il file esiste e ha dati
 location_instructions_block = ""
 if locations_module and len(location_database) > 0:
@@ -229,7 +229,7 @@ Scrivi questo elenco esatto alla fine:
 Se l'utente scrive "Reset", cancella tutto.
 """
 
-# --- INIEZIONE ISTRUZIONI LOCATION NEL PROMPT (MODIFICA 3) ---
+# --- INIEZIONE ISTRUZIONI LOCATION NEL PROMPT ---
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE DATI]\n\n{csv_data_string}"
 
 # --- 5. CONFIGURAZIONE AI ---
@@ -276,4 +276,15 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 history_gemini = []
                 for m in st.session_state.messages:
                     if m["role"] != "model":
-                        history_gemini.append({"role": "user", "parts": [m["content"]]
+                        history_gemini.append({"role": "user", "parts": [m["content"]]})
+                    else:
+                        history_gemini.append({"role": "model", "parts": [m["content"]]})
+                
+                chat = model.start_chat(history=history_gemini[:-1])
+                response = chat.send_message(prompt)
+                
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "model", "content": response.text})
+                
+            except Exception as e:
+                st.error(f"Errore: {e}")
