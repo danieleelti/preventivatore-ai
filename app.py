@@ -266,3 +266,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 response = chat.send_message(prompt)
                 
                 st.markdown(response.text)
+                st.session_state.messages.append({"role": "model", "content": response.text})
+                
+            except Exception as e:
+                st.error(f"Errore: {e}")
+
