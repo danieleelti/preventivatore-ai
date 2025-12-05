@@ -4,6 +4,14 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import csv
 import os
 
+# --- IMPORT MODULO ESTERNO ---
+# Assicurati che il file locations_module.py sia nella stessa cartella
+try:
+    import locations_module
+except ImportError:
+    st.error("⚠️ MANCA IL FILE 'locations_module.py'. Crealo per gestire le location.")
+    st.stop()
+
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
@@ -16,7 +24,6 @@ st.markdown("""
         background-color: #ffffff !important; 
     }
     
-    /* TESTO: Font standard e leggibile */
     div[data-testid="stChatMessage"] p, 
     div[data-testid="stChatMessage"] li {
         font-family: 'Calibri', 'Arial', sans-serif !important;
@@ -26,7 +33,6 @@ st.markdown("""
         margin-bottom: 15px !important;
     }
 
-    /* TITOLI FORMAT */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 18px !important;
@@ -41,7 +47,6 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* TABELLE PULITE */
     div[data-testid="stChatMessage"] table {
         color: #000000 !important;
         font-size: 14px !important;
@@ -65,13 +70,11 @@ st.markdown("""
         padding: 10px !important;
     }
     
-    /* LINK */
     div[data-testid="stChatMessage"] a {
         color: #1a73e8 !important;
         text-decoration: underline !important;
     }
     
-    /* RIMUOVIAMO HR VISIVI */
     div[data-testid="stChatMessage"] hr {
         display: none !important;
     }
@@ -112,16 +115,22 @@ def database_to_string(database_list):
 
 # Caricamento
 master_database = carica_database('mastertb.csv') 
-faq_database = carica_database('faq.csv')
-location_database = carica_database('location.csv')
+faq_database = carica_database('faq.csv') # Se serve in futuro
+location_database = carica_database('location.csv') # Ora viene caricato
 
 if master_database is None:
-    st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'.")
+    st.error("⚠️ ERRORE: Manca 'mastertb.csv'.")
     st.stop()
 
 csv_data_string = database_to_string(master_database)
-if faq_database is None: faq_database = [] 
-if location_database is None: location_database = []
+
+# Gestione stringa Location
+if location_database:
+    location_data_string = database_to_string(location_database)
+    # Recuperiamo le istruzioni dal modulo esterno
+    location_instructions = locations_module.get_location_instructions(location_data_string)
+else:
+    location_instructions = "" # Se manca il file, niente istruzioni
 
 # --- 3. CONFIGURAZIONE API E PASSWORD ---
 api_key = st.secrets["GOOGLE_API_KEY"]
@@ -213,7 +222,8 @@ Scrivi questo elenco esatto alla fine:
 Se l'utente scrive "Reset", cancella tutto.
 """
 
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE DATI]\n\n{csv_data_string}"
+# Assembliamo il Prompt completo includendo le Location Instructions se esistono
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions}\n\n### 💾 [DATABASE FORMAT]\n\n{csv_data_string}"
 
 # --- 5. CONFIGURAZIONE AI ---
 genai.configure(api_key=api_key)
