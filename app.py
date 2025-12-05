@@ -7,13 +7,13 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (CALIBRI 14PX + SPAZIATURA BLOCCHI) ---
+# --- CSS PERSONALIZZATO (AGGIORNATO PER TITOLI EVIDENTI) ---
 st.markdown("""
 <style>
     /* Forza sfondo bianco per i messaggi */
     div[data-testid="stChatMessage"] { background-color: #ffffff !important; }
     
-    /* Font Calibri 14px come richiesto */
+    /* Font Calibri 14px */
     div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] div {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 14px !important;
@@ -22,17 +22,32 @@ st.markdown("""
         margin-bottom: 10px !important;
     }
     
-    /* TITOLI DI BLOCCO (H2) in risalto */
-    div[data-testid="stChatMessage"] h2 {
-        font-family: 'Calibri', 'Arial', sans-serif !important;
-        font-size: 22px !important; /* Più grande per stacco visivo */
-        font-weight: 800 !important; /* Extra bold */
-        color: #1E1E1E !important; /* Nero intenso */
-        margin-top: 10px !important; 
+    /* STILE CUSTOM PER I TITOLI DEI BLOCCHI (BLOCK HEADER) */
+    .block-header {
+        background-color: #f0f2f6; /* Grigio chiaro elegante */
+        border-left: 5px solid #ff4b4b; /* Bordo rosso Streamlit per risalto */
+        padding: 15px;
+        margin-top: 30px !important;
         margin-bottom: 20px !important;
-        border-bottom: none !important;
+        border-radius: 0 10px 10px 0;
+    }
+    
+    .block-title {
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 20px !important;
+        font-weight: 900 !important; /* Black weight */
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        color: #1E1E1E !important;
+        display: block;
+        margin-bottom: 5px;
+    }
+    
+    .block-claim {
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 14px !important;
+        font-style: italic !important;
+        color: #555555 !important;
+        display: block;
     }
     
     /* TITOLI FORMAT (H3) */
@@ -46,14 +61,13 @@ st.markdown("""
     
     div[data-testid="stChatMessage"] strong { font-weight: bold !important; color: #000000 !important; }
     
-    /* SEPARATORE "RIGA BIANCA" */
-    /* Trasforma '---' in uno spazio bianco verticale di 40px */
+    /* SEPARATORE INVISIBILE */
     div[data-testid="stChatMessage"] hr { 
         display: block !important;
         border: 0 !important;
         height: 1px !important;
-        margin-top: 40px !important;
-        margin-bottom: 40px !important;
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
         background-color: transparent !important;
     }
 
@@ -134,7 +148,6 @@ location_instructions_block = ""
 if locations_module and location_database:
     loc_db_string = database_to_string(location_database)
     if loc_db_string:
-        # Recupera le istruzioni pulite dal modulo aggiornato
         location_instructions_block = locations_module.get_location_instructions(loc_db_string)
 
 # --- 4. CONFIGURAZIONE API E PASSWORD ---
@@ -194,31 +207,42 @@ Segui rigorosamente questo ordine:
 Se mancano info essenziali, chiedile. Se le hai, procedi.
 
 **FASE 1: LA REGOLA DEL 12 (TASSATIVO)**
-Salvo diversa richiesta numerica dell'utente, proponi **SEMPRE 12 FORMAT** divisi in 4 blocchi ben distinti.
-Per ogni blocco, usa un Titolo H2 (##) che includa la categoria e un **CLAIM PERSONALIZZATO** breve sull'obiettivo dell'utente.
-**⛔ DIVIETO ASSOLUTO:** Il Titolo H2 e il Claim devono essere **SOLO TESTO**. Nessuna emoji nel titolo della sezione.
+Salvo diversa richiesta numerica dell'utente, proponi **SEMPRE 12 FORMAT** divisi in 4 blocchi.
 
-**STRUTTURA BLOCCHI E SEPARATORI:**
+⚠️ **IMPORTANTE: FORMATTAZIONE TITOLI BLOCCHI**
+Per separare i blocchi, NON usare Markdown standard (##).
+DEVI USARE ESATTAMENTE QUESTO CODICE HTML per renderli visibili:
 
-**BLOCCO 1: ## I BEST SELLER - [Claim che rassicura sulla scelta]**
-*(Elenca i 4 format più classici e venduti)*
-(Alla fine del blocco inserisci separatore: `---`)
+<div class="block-header">
+<span class="block-title">NOME BLOCCO</span>
+<span class="block-claim">Il tuo claim personalizzato qui</span>
+</div>
 
-**BLOCCO 2: ## LE NOVITÀ - [Claim che punta sull'innovazione]**
-*(Elenca 4 format originali o tecnologici)*
-(Alla fine del blocco inserisci separatore: `---`)
+**STRUTTURA BLOCCHI:**
 
-**BLOCCO 3: ## VIBE & RELAX - [Claim sull'atmosfera/cena]**
-*(Elenca 2 format di atmosfera)*
-(Alla fine del blocco inserisci separatore: `---`)
+**BLOCCO 1: I BEST SELLER**
+*Usa l'HTML sopra.* Claim: frase rassicurante sulla scelta per [Obiettivo Utente].
+*(Elenca i 4 format più classici)*
+(Inserisci separatore: `---`)
 
-**BLOCCO 4: ## SOCIAL - [Claim sulla relazione/impatto]**
-*(Elenca 2 format creativi/CSR)*
-(Alla fine del blocco inserisci separatore: `---`)
+**BLOCCO 2: LE NOVITÀ**
+*Usa l'HTML sopra.* Claim: frase sull'innovazione per [Obiettivo Utente].
+*(Elenca 4 format originali)*
+(Inserisci separatore: `---`)
+
+**BLOCCO 3: VIBE & RELAX**
+*Usa l'HTML sopra.* Claim: frase su atmosfera/cena.
+*(Elenca 2 format atmosfera)*
+(Inserisci separatore: `---`)
+
+**BLOCCO 4: SOCIAL**
+*Usa l'HTML sopra.* Claim: frase su relazione/impatto.
+*(Elenca 2 format creativi)*
+(Inserisci separatore: `---`)
 
 **Struttura OBBLIGATORIA per ogni singolo format:**
 ### [Emoji Tematica] [Nome Format]
-[Scrivi 2-3 righe di testo discorsivo spiegando **PERCHÉ** consigliamo questo format specificamente per questo evento. Niente emoji qui.]
+[Scrivi 2-3 righe discorsive sul PERCHÉ lo consigliamo. Niente emoji qui.]
 (Due invio vuoti)
 
 **FASE 2: SUGGERIMENTO LOCATION (Solo se richiesto)**
@@ -227,12 +251,9 @@ Per ogni blocco, usa un Titolo H2 (##) che includa la categoria e un **CLAIM PER
 2.  Elenca le location seguendo RIGOROSAMENTE le istruzioni fornite nel Modulo Location (NO EMOJI, NO RANKING, SOLO TESTO PULITO).
 
 **FASE 3: TABELLA RIEPILOGATIVA**
-Genera la tabella riassuntiva dei costi.
+Genera la tabella.
 **⚠️ REGOLA COLONNA PRESENTAZIONE:** Il testo del link deve essere tassativamente **"[Nome Format].pdf"**.
-Esempio corretto:
-| Format | Prezzo Totale (+IVA) | Presentazione |
-| :--- | :--- | :--- |
-| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL) |
+Esempio: `[Cooking.pdf](URL)`
 
 **FASE 4: INFO UTILI (OBBLIGATORIO)**
 Copia questo blocco esatto:
@@ -260,7 +281,6 @@ FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n#
 # --- 6. AVVIO AI ---
 genai.configure(api_key=api_key)
 
-# Modello impostato su GEMINI 3 PRO PREVIEW (TASSATIVO)
 model = genai.GenerativeModel(
   model_name="gemini-3-pro-preview", 
   generation_config={"temperature": 0.0},
@@ -285,7 +305,7 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     role = message["role"]
     with st.chat_message(role):
-        st.markdown(message["content"])
+        st.markdown(message["content"], unsafe_allow_html=True) # IMPORTANTE: ABILITA HTML NEL MESSAGGIO
 
 if prompt := st.chat_input("Scrivi qui la richiesta..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -309,7 +329,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 chat = model.start_chat(history=history_gemini[:-1])
                 response = chat.send_message(prompt)
                 
-                st.markdown(response.text)
+                # IMPORTANTE: unsafe_allow_html=True DEVE ESSERE QUI PER RENDERIZZARE I TITOLI
+                st.markdown(response.text, unsafe_allow_html=True) 
                 st.session_state.messages.append({"role": "model", "content": response.text})
                 
             except Exception as e:
