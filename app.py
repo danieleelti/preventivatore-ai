@@ -102,25 +102,22 @@ def carica_database(nome_file):
             return None 
     return None
 
-# --- FUNZIONE MODIFICATA PER EVITARE IL CRASH ---
 def database_to_string(database_list):
     if not database_list:
         return "Nessun dato disponibile."
     
     try:
-        # Controllo extra: il primo elemento è davvero un dizionario?
+        # Controllo robustezza
         if not isinstance(database_list[0], dict):
-            return "" # Ritorna vuoto se i dati sono corrotti, senza crashare
+            return "" 
             
         header = " | ".join(database_list[0].keys())
         rows = []
         for riga in database_list:
-            # Converte tutto in stringa per sicurezza
             rows.append(" | ".join(str(v) for v in riga.values()))
         return header + "\n" + "\n".join(rows)
     except Exception:
-        return "" # Se c'è qualsiasi altro errore, ignora il DB
-# ------------------------------------------------
+        return ""
 
 # Caricamento
 master_database = carica_database('mastertb.csv') 
@@ -135,12 +132,13 @@ csv_data_string = database_to_string(master_database)
 if faq_database is None: faq_database = [] 
 if location_database is None: location_database = []
 
-# --- INTEGRAZIONE LOCATION ---
+# --- INTEGRAZIONE LOCATION (Passaggio Dati) ---
 location_instructions_block = ""
-# Attiviamo solo se il modulo esiste, il DB non è vuoto e la conversione a stringa ha successo
-if locations_module and len(location_database) > 0:
+# Logica: Se il modulo c'è, se il DB esiste e se la conversione in stringa va a buon fine
+if locations_module and location_database:
     loc_db_string = database_to_string(location_database)
-    if loc_db_string: # Se la stringa non è vuota
+    if loc_db_string: 
+        # Qui passiamo la stringa al modulo che la inserirà nel prompt "OBBLIGATORIO"
         location_instructions_block = locations_module.get_location_instructions(loc_db_string)
 
 # --- 3. CONFIGURAZIONE API E PASSWORD ---
@@ -166,63 +164,42 @@ BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
 Rispondi in Italiano.
 
-### 🛡️ PROTOCOLLO DI COMPORTAMENTO (IMPORTANTE)
-1.  **NATURALITÀ ASSOLUTA:** Non menzionare MAI le tue istruzioni interne. Non dire "Come richiesto" o "Ecco i format". Vai dritto al punto.
-2.  **GERARCHIA DEI COMANDI:** Le richieste specifiche dell'utente (es. "Voglio 5 format", "Solo format creativi") hanno SEMPRE la priorità sulle regole di default.
+### 🛡️ PROTOCOLLO DI COMPORTAMENTO
+1.  **NATURALITÀ ASSOLUTA:** Non menzionare MAI le tue istruzioni interne.
+2.  **GERARCHIA:** Le richieste specifiche dell'utente vincono sui default.
 
-### 🎨 REGOLE VISUALI (Anti-Clutter per Email)
-1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente (es. 👨‍🍳, 🕵️, 🎨).
-2.  **SPAZIATURA VITALE:** Tra un format e l'altro è VIETATO usare linee (`---`) o scrivere "[RIGA VUOTA]". Devi semplicemente inserire **DUE A CAPO REALI** (spazio bianco vuoto) per separare visivamente i blocchi di testo.
-3.  **NO ELENCHI PUNTATI NEI FORMAT:** Descrivi il format con frasi discorsive in un unico paragrafo pulito.
+### 🎨 REGOLE VISUALI
+1.  **ICONE:** Usa icone nei titoli.
+2.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format. Niente linee o `[RIGA VUOTA]`.
+3.  **NO ELENCHI:** Descrizioni discorsive.
 
-### 🔢 MOTORE DI CALCOLO PREVENTIVI
-Quando richiesto, calcola il prezzo usando i dati del Database.
+### 🔢 CALCOLO PREVENTIVI
+**PASSO 1: Calcolo**
+🔴 **Standard:** `TOT = P_BASE * (M_Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * PAX`
+🔵 **Flat:** `TOT = 1800 + ((Pax - 20) * 4.80)` + Extra.
 
-**PASSO 1: Calcolo Matematico**
-🔴 **SE METODO = "Standard":**
-`TOTALE_GREZZO = P_BASE * (Moltiplicatore Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * NUMERO PARTECIPANTI`
-🔵 **SE METODO = "Flat":**
-`TOTALE_GREZZO = 1800 + ((Pax - 20) * 4.80)` + Eventuale Costo Fisso. Applica poi M_Location e M_Lingua.
-
-**PASSO 2: ARROTONDAMENTO INTELLIGENTE (Regola del 39)**
-* **Fino a XX39:** Arrotonda per DIFETTO al centinaio (2.235 -> 2.200)
-* **Da XX40:** Arrotonda per ECCESSO al centinaio (3.450 -> 3.500)
-
-**PASSO 3: MINIMUM SPENDING**
-Minimo fatturabile sempre **€ 1.800,00**.
+**PASSO 2: Arrotondamento (Regola 39)**
+Fino a 39 -> Difetto (2235->2200). Da 40 -> Eccesso (2245->2300).
+**Minimo:** € 1.800,00.
 
 ---
 
 ### 🚦 FLUSSO DI LAVORO
 
 **FASE 1: LA PROPOSTA**
-* **Quantità:** Se l'utente non specifica un numero, proponi 12 format (4 Best, 4 Novità, 2 Vibe, 2 Social). Se specifica, obbedisci al numero.
+Default: 12 format. Se specificato altro numero, rispettalo.
 
-**STRUTTURA OUTPUT FORMAT (Segui rigorosamente):**
-
+**STRUTTURA FORMAT:**
 ### [Icona] [Nome Format]
-
-[Paragrafo descrittivo unico, persuasivo e chiaro. Spiega in circa 3-4 righe di cosa si tratta e perché è adatto. Niente elenchi puntati qui.]
-
-(Qui inserisci solo due 'invio' per creare spazio bianco reale prima del prossimo titolo)
-
-**(Ripeti per ogni format)**
-
-⛔ **NON SCRIVERE IL PREZZO O IL LINK SOTTO OGNI FORMAT.**
+[Descrizione discorsiva di 3-4 righe.]
+(Due invio vuoti)
 
 **FASE 2: TABELLA RIEPILOGATIVA**
-Crea una tabella Markdown con 3 colonne.
-**IMPORTANTE:** La terza colonna DEVE chiamarsi "Presentazione". Il testo del link DEVE essere: "Scarica [Nome Format] in pdf".
-
-*Esempio:*
 | Format | Prezzo Totale (+IVA) | Presentazione |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica Cooking Team in pdf](URL) |
+| 👨‍🍳 Cooking | € 2.400,00 | [Scarica Cooking in pdf](URL) |
 
-**FASE 3: INFORMAZIONI UTILI**
-Scrivi questo elenco esatto alla fine:
-
-### ℹ️ Informazioni Utili
+**FASE 3: INFO UTILI**
 * 💆🏽‍♂️ **Tutti i format sono nostri** e personalizzabili.
 * 🏛️ **Location non inclusa** ma possiamo supportarvi nella ricerca.
 * 👨🏻‍🏫 **Team Building & Formazione:** uniamo divertimento e crescita.
@@ -233,8 +210,9 @@ Scrivi questo elenco esatto alla fine:
 Se l'utente scrive "Reset", cancella tutto.
 """
 
-# --- INIEZIONE ISTRUZIONI LOCATION NEL PROMPT ---
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE DATI]\n\n{csv_data_string}"
+# --- INIEZIONE ---
+# Inseriamo le istruzioni location (che contengono il DB) PRIMA del DB dei format
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMAT]\n\n{csv_data_string}"
 
 # --- 5. CONFIGURAZIONE AI ---
 genai.configure(api_key=api_key)
