@@ -220,12 +220,15 @@ Struttura:
 *SE E SOLO SE* l'utente ha chiesto una location o un consiglio su dove svolgere l'evento:
 1. Inserisci OBBLIGATORIAMENTE il titolo: **## Location** (Usa due hashtag per H2).
 2. Elenca le location suggerite subito dopo.
-3. ⚠️ **DIVIETI ASSOLUTI NELLA SEZIONE LOCATION:**
-   - **NO RANKING:** Non scrivere MAI "Ranking: X/5", "Voto", "Stelle". È VIETATO.
-   - **NO CLASSIFICHE:** Non numerare le location (1., 2., 3.). Usa solo bullet points (*).
-   - **NO ICONE/EMOJI:** Solo testo puro.
-   - **FORMATO OBBLIGATORIO:**
-     * **Nome Location (Città):** Breve descrizione descrittiva. Spazi: Indoor/Outdoor.
+3. ⚠️ **PROTOCOLLO DI PULIZIA TESTO (STRICT):**
+   Il testo nel database delle location potrebbe contenere icone (📍, 🏨, ⭐) o testi come "Dal nostro archivio" e "Ranking: X/5".
+   **DEVI RIMUOVERLI TUTTI.** Non copiare incollare l'output grezzo.
+   Devi **RISCRIVERE** ogni location usando ESATTAMENTE e SOLO questo pattern pulito:
+   
+   * **Nome Location (Città):** [Scrivi qui la descrizione e il perché è adatta, rimuovendo la parola "Perché"]. Spazi: [Indoor/Outdoor].
+
+   ⛔ **VIETATO:** Usare icone, emoji, parole "Ranking", voti, o elenchi numerati.
+   
 Mantieni lo stesso distanziamento (due invio vuoti) prima e dopo la sezione location.
 Se l'utente NON ha chiesto location, SALTA questa fase.
 
