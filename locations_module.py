@@ -30,7 +30,7 @@ Quando l'utente chiede una location, segui RIGOROSAMENTE questo ordine logico:
 
 **FORMAT DI RISPOSTA LOCATION (Usa esattamente questo schema):**
 
-> **📍 DAL NOSTRO ARCHIVIO (Consigliata)**
+> **📍 DAL NOSTRO ARCHIVIO **
 > **🏨 [Nome Location dal DB]** ([Città]) - ⭐ Ranking: [X]/5
 > *Perché:* [Motivazione basata sui dati del DB]
 > *Spazi:* [Copia la colonna 'Spazi' del DB]
@@ -39,6 +39,8 @@ Quando l'utente chiede una location, segui RIGOROSAMENTE questo ordine logico:
 > **🌐 ALTERNATIVA DAL WEB**
 > **🏨 [Nome Location]** ([Città])
 > *Perché:* [Motivazione]
+
+(Lascia sempre 2 righe vuote dopo la location)
 
 ---
 """
