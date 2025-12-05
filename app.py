@@ -16,8 +16,7 @@ PASSWORD_SEGRETA = "TeamBuilding2025#"
 @st.cache_data(ttl=600) # Cache per non ricaricare il CSV ad ogni click, si aggiorna ogni 10 min
 def load_database():
     try:
-        # Cerca il file nella stessa cartella dello script
-df = pd.read_csv("MasterTb.csv", sep=None, engine='python')
+        df = pd.read_csv("MasterTb.csv", sep=None, engine='python')
         # Converte il CSV in una stringa Markdown ben formattata per l'AI
         return df.to_markdown(index=False)
     except Exception as e:
@@ -219,4 +218,5 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
