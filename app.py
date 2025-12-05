@@ -239,14 +239,21 @@ Genera la tabella riassuntiva dei costi.
 | 👨‍🍳 Cooking | € 2.400,00 | [Scarica Cooking in pdf](URL) |
 
 **FASE 4: INFO UTILI (OBBLIGATORIO)**
-Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola e NON aggiungere pallini neri prima delle spunte (fai una lista pulita):
+Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola.
+IMPORTANTE: Mantieni le righe vuote tra i punti per garantire che vadano a capo correttamente.
 
 ### Informazioni Utili
+
 ✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+
 ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+
 ✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+
 ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+
 ✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 
 Se l'utente scrive "Reset", cancella la memoria.
