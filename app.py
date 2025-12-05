@@ -4,6 +4,13 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import csv
 import os
 
+# --- IMPORT MODULO LOCATION (MODIFICA 1) ---
+try:
+    import locations_module
+except ImportError:
+    st.warning("⚠️ File 'locations_module.py' non trovato. Le funzioni Location sono disabilitate.")
+    locations_module = None
+
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
@@ -123,6 +130,15 @@ csv_data_string = database_to_string(master_database)
 if faq_database is None: faq_database = [] 
 if location_database is None: location_database = []
 
+# --- INTEGRAZIONE LOCATION (MODIFICA 2) ---
+# Prepariamo la stringa delle istruzioni location SOLO se il file esiste e ha dati
+location_instructions_block = ""
+if locations_module and len(location_database) > 0:
+    # Convertiamo il DB location in stringa
+    loc_db_string = database_to_string(location_database)
+    # Otteniamo le istruzioni dal modulo esterno
+    location_instructions_block = locations_module.get_location_instructions(loc_db_string)
+
 # --- 3. CONFIGURAZIONE API E PASSWORD ---
 api_key = st.secrets["GOOGLE_API_KEY"]
 PASSWORD_SEGRETA = "TeamBuilding2025#"
@@ -213,7 +229,8 @@ Scrivi questo elenco esatto alla fine:
 Se l'utente scrive "Reset", cancella tutto.
 """
 
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE DATI]\n\n{csv_data_string}"
+# --- INIEZIONE ISTRUZIONI LOCATION NEL PROMPT (MODIFICA 3) ---
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE DATI]\n\n{csv_data_string}"
 
 # --- 5. CONFIGURAZIONE AI ---
 genai.configure(api_key=api_key)
@@ -259,15 +276,4 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 history_gemini = []
                 for m in st.session_state.messages:
                     if m["role"] != "model":
-                        history_gemini.append({"role": "user", "parts": [m["content"]]})
-                    else:
-                        history_gemini.append({"role": "model", "parts": [m["content"]]})
-                
-                chat = model.start_chat(history=history_gemini[:-1])
-                response = chat.send_message(prompt)
-                
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "model", "content": response.text})
-                
-            except Exception as e:
-                st.error(f"Errore: {e}")
+                        history_gemini.append({"role": "user", "parts": [m["content"]]
