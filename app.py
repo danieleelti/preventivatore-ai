@@ -7,35 +7,38 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (CALIBRI 12PX) ---
+# --- CSS PERSONALIZZATO (CALIBRI 14PX + SPAZIATURA BLOCCHI) ---
 st.markdown("""
 <style>
     /* Forza sfondo bianco per i messaggi */
     div[data-testid="stChatMessage"] { background-color: #ffffff !important; }
     
-    /* Font Calibri 12px come richiesto */
+    /* Font Calibri 14px come richiesto */
     div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] div {
         font-family: 'Calibri', 'Arial', sans-serif !important;
-        font-size: 12px !important;
+        font-size: 14px !important;
         color: #000000 !important;
-        line-height: 1.4 !important;
+        line-height: 1.5 !important;
         margin-bottom: 10px !important;
     }
     
-    /* Titoli proporzionati */
+    /* TITOLI DI BLOCCO (H2) in risalto */
     div[data-testid="stChatMessage"] h2 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
-        font-size: 18px !important;
-        font-weight: bold !important;
-        color: #000000 !important;
-        margin-top: 20px !important; margin-bottom: 10px !important;
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 5px;
+        font-size: 22px !important; /* Più grande per stacco visivo */
+        font-weight: 800 !important; /* Extra bold */
+        color: #1E1E1E !important; /* Nero intenso */
+        margin-top: 10px !important; 
+        margin-bottom: 20px !important;
+        border-bottom: none !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
+    /* TITOLI FORMAT (H3) */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
-        font-size: 14px !important;
+        font-size: 16px !important;
         font-weight: bold !important;
         color: #000000 !important;
         margin-top: 15px !important; margin-bottom: 5px !important;
@@ -43,19 +46,29 @@ st.markdown("""
     
     div[data-testid="stChatMessage"] strong { font-weight: bold !important; color: #000000 !important; }
     
-    /* Tabelle compatte */
+    /* SEPARATORE "RIGA BIANCA" */
+    /* Trasforma '---' in uno spazio bianco verticale di 40px */
+    div[data-testid="stChatMessage"] hr { 
+        display: block !important;
+        border: 0 !important;
+        height: 1px !important;
+        margin-top: 40px !important;
+        margin-bottom: 40px !important;
+        background-color: transparent !important;
+    }
+
+    /* Tabelle leggibili */
     div[data-testid="stChatMessage"] table {
-        color: #000000 !important; font-size: 12px !important; width: 100% !important;
+        color: #000000 !important; font-size: 14px !important; width: 100% !important;
         border-collapse: collapse !important; margin-top: 15px !important; margin-bottom: 15px !important;
     }
     div[data-testid="stChatMessage"] th {
         background-color: #f4f4f4 !important; color: #000000 !important; font-weight: bold !important;
-        text-align: left !important; border-bottom: 2px solid #000 !important; padding: 5px !important;
+        text-align: left !important; border-bottom: 2px solid #000 !important; padding: 8px !important;
     }
-    div[data-testid="stChatMessage"] td { border-bottom: 1px solid #ddd !important; padding: 5px !important; }
+    div[data-testid="stChatMessage"] td { border-bottom: 1px solid #ddd !important; padding: 8px !important; }
     
     div[data-testid="stChatMessage"] a { color: #1a73e8 !important; text-decoration: underline !important; }
-    div[data-testid="stChatMessage"] hr { display: none !important; }
     div[data-testid="stChatMessage"] ul { list-style-type: none !important; padding-left: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -153,7 +166,7 @@ Rispondi in Italiano.
 
 ### 🎨 REGOLE VISUALI (MASSIMA PULIZIA)
 1.  **ICONE FORMAT:** Inserisci **UNA SOLA EMOJI** a tema esclusivamente nel TITOLO del format (es. ### 🍳 Cooking).
-2.  **NESSUN ALTRA EMOJI:** È severamente vietato usare emoji nelle descrizioni, nei punti elenco o altrove. Il testo deve essere pulito.
+2.  **NESSUN ALTRA EMOJI:** È severamente vietato usare emoji nelle descrizioni, nei punti elenco, nei titoli di sezione o nei claim.
 3.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format per dare respiro.
 4.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
 
@@ -181,15 +194,31 @@ Segui rigorosamente questo ordine:
 Se mancano info essenziali, chiedile. Se le hai, procedi.
 
 **FASE 1: LA REGOLA DEL 12 (TASSATIVO)**
-Salvo diversa richiesta numerica dell'utente, proponi **SEMPRE 12 FORMAT** divisi in queste 4 categorie (usa dei piccoli sottotitoli in grassetto senza emoji):
-1.  **I BEST SELLER** (Scegli i 4 format più classici, sicuri e venduti)
-2.  **LE NOVITÀ** (Scegli 4 format originali, tecnologici o recenti)
-3.  **VIBE & RELAX** (Scegli 2 format di atmosfera, cena o relax)
-4.  **SOCIAL** (Scegli 2 format creativi, di interazione o CSR)
+Salvo diversa richiesta numerica dell'utente, proponi **SEMPRE 12 FORMAT** divisi in 4 blocchi ben distinti.
+Per ogni blocco, usa un Titolo H2 (##) che includa la categoria e un **CLAIM PERSONALIZZATO** breve sull'obiettivo dell'utente.
+**⛔ DIVIETO ASSOLUTO:** Il Titolo H2 e il Claim devono essere **SOLO TESTO**. Nessuna emoji nel titolo della sezione.
 
-Struttura OBBLIGATORIA per ogni singolo format:
+**STRUTTURA BLOCCHI E SEPARATORI:**
+
+**BLOCCO 1: ## I BEST SELLER - [Claim che rassicura sulla scelta]**
+*(Elenca i 4 format più classici e venduti)*
+(Alla fine del blocco inserisci separatore: `---`)
+
+**BLOCCO 2: ## LE NOVITÀ - [Claim che punta sull'innovazione]**
+*(Elenca 4 format originali o tecnologici)*
+(Alla fine del blocco inserisci separatore: `---`)
+
+**BLOCCO 3: ## VIBE & RELAX - [Claim sull'atmosfera/cena]**
+*(Elenca 2 format di atmosfera)*
+(Alla fine del blocco inserisci separatore: `---`)
+
+**BLOCCO 4: ## SOCIAL - [Claim sulla relazione/impatto]**
+*(Elenca 2 format creativi/CSR)*
+(Alla fine del blocco inserisci separatore: `---`)
+
+**Struttura OBBLIGATORIA per ogni singolo format:**
 ### [Emoji Tematica] [Nome Format]
-[Scrivi 2-3 righe di testo discorsivo spiegando **PERCHÉ** consigliamo questo format specificamente per questo evento/mood. Non fare descrizioni generiche. Niente emoji qui.]
+[Scrivi 2-3 righe di testo discorsivo spiegando **PERCHÉ** consigliamo questo format specificamente per questo evento. Niente emoji qui.]
 (Due invio vuoti)
 
 **FASE 2: SUGGERIMENTO LOCATION (Solo se richiesto)**
