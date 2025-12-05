@@ -14,7 +14,7 @@ def carica_dati(nome_file):
         # Apre il file in lettura, usando utf-8 per accenti e simboli corretti
         with open(percorso_file, mode='r', encoding='utf-8') as file:
             # DictReader usa la prima riga del CSV come chiavi (intestazioni)
-            reader = csv.DictReader(file, delimiter=';') # NOTA: Se il tuo CSV usa virgole, cambia delimiter=','
+            reader = csv.DictReader(file, delimiter=',') # NOTA: Se il tuo CSV usa virgole, cambia delimiter=','
             
             for riga in reader:
                 lista_dati.append(riga)
