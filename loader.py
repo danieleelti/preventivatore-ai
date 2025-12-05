@@ -33,7 +33,7 @@ def carica_dati(nome_file):
 # Qui eseguiamo il caricamento vero e proprio
 print("--- Inizio caricamento Database ---")
 
-master_database = carica_dati('MasterTb.csv')
+master_database = carica_dati('mastertb.csv')
 faq_database = carica_dati('faq.csv')
 location_database = carica_dati('location.csv')
 
