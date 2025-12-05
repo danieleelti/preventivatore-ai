@@ -5,7 +5,7 @@ import csv
 import os
 
 # --- 1. CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
+st.set_page_config(page_title="FATTURAGE", page_icon="💶🦁💰", layout="centered")
 
 # --- CSS PERSONALIZZATO (CALIBRI 14PX + TITOLI EVIDENTI + TABELLA FIX) ---
 st.markdown("""
@@ -360,3 +360,4 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
