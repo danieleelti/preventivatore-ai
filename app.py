@@ -8,13 +8,12 @@ import os
 try:
     import locations_module
 except ImportError:
-    # Se manca il file, creiamo una variabile vuota per evitare crash
     locations_module = None
 
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (OTTIMIZZATO PER EMAIL) ---
+# --- CSS PERSONALIZZATO ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
@@ -23,7 +22,6 @@ st.markdown("""
         background-color: #ffffff !important; 
     }
     
-    /* TESTO: Font standard e leggibile */
     div[data-testid="stChatMessage"] p, 
     div[data-testid="stChatMessage"] li {
         font-family: 'Calibri', 'Arial', sans-serif !important;
@@ -33,7 +31,6 @@ st.markdown("""
         margin-bottom: 15px !important;
     }
 
-    /* TITOLI FORMAT */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 18px !important;
@@ -48,7 +45,6 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* TABELLE PULITE */
     div[data-testid="stChatMessage"] table {
         color: #000000 !important;
         font-size: 14px !important;
@@ -72,13 +68,11 @@ st.markdown("""
         padding: 10px !important;
     }
     
-    /* LINK */
     div[data-testid="stChatMessage"] a {
         color: #1a73e8 !important;
         text-decoration: underline !important;
     }
     
-    /* RIMUOVIAMO HR VISIVI */
     div[data-testid="stChatMessage"] hr {
         display: none !important;
     }
@@ -108,14 +102,25 @@ def carica_database(nome_file):
             return None 
     return None
 
+# --- FUNZIONE MODIFICATA PER EVITARE IL CRASH ---
 def database_to_string(database_list):
     if not database_list:
         return "Nessun dato disponibile."
-    header = " | ".join(database_list[0].keys())
-    rows = []
-    for riga in database_list:
-        rows.append(" | ".join(str(v) for v in riga.values()))
-    return header + "\n" + "\n".join(rows)
+    
+    try:
+        # Controllo extra: il primo elemento è davvero un dizionario?
+        if not isinstance(database_list[0], dict):
+            return "" # Ritorna vuoto se i dati sono corrotti, senza crashare
+            
+        header = " | ".join(database_list[0].keys())
+        rows = []
+        for riga in database_list:
+            # Converte tutto in stringa per sicurezza
+            rows.append(" | ".join(str(v) for v in riga.values()))
+        return header + "\n" + "\n".join(rows)
+    except Exception:
+        return "" # Se c'è qualsiasi altro errore, ignora il DB
+# ------------------------------------------------
 
 # Caricamento
 master_database = carica_database('mastertb.csv') 
@@ -131,13 +136,12 @@ if faq_database is None: faq_database = []
 if location_database is None: location_database = []
 
 # --- INTEGRAZIONE LOCATION ---
-# Prepariamo la stringa delle istruzioni location SOLO se il file esiste e ha dati
 location_instructions_block = ""
+# Attiviamo solo se il modulo esiste, il DB non è vuoto e la conversione a stringa ha successo
 if locations_module and len(location_database) > 0:
-    # Convertiamo il DB location in stringa
     loc_db_string = database_to_string(location_database)
-    # Otteniamo le istruzioni dal modulo esterno
-    location_instructions_block = locations_module.get_location_instructions(loc_db_string)
+    if loc_db_string: # Se la stringa non è vuota
+        location_instructions_block = locations_module.get_location_instructions(loc_db_string)
 
 # --- 3. CONFIGURAZIONE API E PASSWORD ---
 api_key = st.secrets["GOOGLE_API_KEY"]
