@@ -3,57 +3,59 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import pandas as pd
 # --- INIZIO NUOVO BLOCCO DATABASE (AGGIORNATO) ---
+# --- CARICAMENTO DATABASE (Versione Definitiva) ---
 import csv
 import os
 import streamlit as st
 
-# 1. DIAGNOSTICA PREVENTIVA (La Spia)
-st.write("🔍 --- CONTROLLO DIAGNOSTICO FILE ---")
-cartella_corrente = os.getcwd()
-files_visibili = os.listdir(cartella_corrente)
-st.write(f"📂 Cartella di lavoro: `{cartella_corrente}`")
-st.write("📄 File trovati qui:", files_visibili)
-st.write("---------------------------------------")
-
 @st.cache_data(show_spinner=False)
-def carica_csv_interno(nome_file):
-    percorso_completo = os.path.join(os.getcwd(), nome_file)
+def carica_database(nome_file):
+    # Costruisce il percorso sicuro
+    percorso = os.path.join(os.getcwd(), nome_file)
     
-    if not os.path.exists(percorso_completo):
-        # Se è un file opzionale (faq/location) diamo solo un avviso giallo
-        if nome_file != "MasterTb.csv":
-             st.warning(f"⚠️ File opzionale '{nome_file}' non trovato. Il bot funzionerà ma senza questi dati.")
-             return []
-        # Se è il MasterTb, dobbiamo fermarci e segnalarlo
-        st.error(f"⚠️ ERRORE CRITICO: Non trovo '{nome_file}'. Controlla la lista file qui sopra ⬆️")
-        st.stop()
-        return []
-    
+    # Se il file non esiste, ritorna lista vuota (gestito dopo)
+    if not os.path.exists(percorso):
+        return None 
+
     lista_dati = []
-    # Proviamo prima con UTF-8 (Standard web), se fallisce proviamo Latin-1 (Excel Windows)
-    encodings_da_provare = ['utf-8', 'latin-1', 'cp1252']
+    # Tentativo 1: Standard (UTF-8)
+    # Tentativo 2: Excel/Windows (Latin-1) se ci sono accenti strani
+    encodings = ['utf-8', 'latin-1']
     
-    for encoding in encodings_da_provare:
+    for encoding in encodings:
         try:
-            with open(percorso_completo, mode='r', encoding=encoding) as file:
+            with open(percorso, mode='r', encoding=encoding) as file:
+                # Google Sheets usa la virgola come separatore
                 reader = csv.DictReader(file, delimiter=',')
                 for riga in reader:
                     lista_dati.append(riga)
-            # Se siamo arrivati qui, ha funzionato! Usciamo dal ciclo
-            return lista_dati
+            return lista_dati # Successo!
         except UnicodeDecodeError:
-            continue # Proviamo il prossimo encoding
-        except Exception as e:
-            st.error(f"❌ Errore imprevisto su {nome_file}: {e}")
-            return []
-            
-    st.error(f"❌ Impossibile leggere {nome_file} con nessuna codifica nota.")
-    return []
+            continue # Prova il prossimo encoding
+        except Exception:
+            return None # Errore generico
 
-# Caricamento
-master_database = carica_csv_interno('MasterTb.csv')
-faq_database = carica_csv_interno('faq.csv')
-location_database = carica_csv_interno('location.csv')
+    return None
+
+# Caricamento effettivo
+master_database = carica_database('MasterTb.csv')
+faq_database = carica_database('faq.csv')
+location_database = carica_database('location.csv')
+
+# --- CONTROLLO DI SICUREZZA ---
+# Se MasterTb fallisce, blocchiamo tutto con un messaggio chiaro
+if master_database is None:
+    st.error("⚠️ ERRORE CRITICO: Impossibile leggere 'MasterTb.csv'. Verifica che sia stato caricato su GitHub e che sia un CSV separato da virgole.")
+    st.stop()
+    
+# Se faq o location mancano, avvisiamo ma lasciamo andare avanti
+if faq_database is None:
+    st.warning("⚠️ Attenzione: 'faq.csv' non caricato o vuoto. Il bot risponderà senza FAQ.")
+    faq_database = [] # Evita errori dopo
+
+if location_database is None:
+    st.warning("⚠️ Attenzione: 'location.csv' non caricato o vuoto.")
+    location_database = [] # Evita errori dopo
 # --- FINE NUOVO BLOCCO DATABASE ---
 
 
@@ -272,4 +274,5 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
