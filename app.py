@@ -4,25 +4,72 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import csv
 import os
 
-# --- 1. CONFIGURAZIONE PAGINA (PRIMA RIGA OBBLIGATORIA) ---
+# --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- 2. GESTIONE DATABASE (Caricamento Sicuro) ---
+# --- CSS PERSONALIZZATO (FONT, COLORI, DIMENSIONI) ---
+st.markdown("""
+<style>
+    /* Importiamo un font simile a Calibri se non presente */
+    @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
+
+    /* Regole per tutto il testo dentro la chat */
+    div[data-testid="stChatMessage"] {
+        background-color: #ffffff !important; /* Sfondo bianco per leggere meglio il nero */
+    }
+    
+    /* TESTO NORMALE: Calibri (o simile), 14px (~10pt), NERO */
+    div[data-testid="stChatMessage"] p, 
+    div[data-testid="stChatMessage"] li, 
+    div[data-testid="stChatMessage"] td {
+        font-family: 'Calibri', 'Open Sans', sans-serif !important;
+        font-size: 14px !important;
+        color: #000000 !important; /* Nero assoluto */
+        line-height: 1.4 !important;
+    }
+
+    /* TITOLI (H3 usato per i nomi format): 16px (~12pt), BOLD, NERO */
+    div[data-testid="stChatMessage"] h3 {
+        font-family: 'Calibri', 'Open Sans', sans-serif !important;
+        font-size: 16px !important;
+        font-weight: bold !important;
+        color: #000000 !important;
+        margin-top: 10px !important;
+        margin-bottom: 5px !important;
+    }
+    
+    /* TITOLI FORTI (Bold nel testo) */
+    div[data-testid="stChatMessage"] strong {
+        font-weight: bold !important;
+        color: #000000 !important;
+    }
+
+    /* TABELLE: Nere e compatte */
+    div[data-testid="stChatMessage"] table {
+        color: #000000 !important;
+        font-size: 14px !important;
+    }
+    div[data-testid="stChatMessage"] th {
+        background-color: #f0f0f0 !important;
+        color: #000000 !important;
+        font-weight: bold !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 2. GESTIONE DATABASE ---
 @st.cache_data(show_spinner=False)
 def carica_database(nome_file):
     percorso = os.path.join(os.getcwd(), nome_file)
-    
     if not os.path.exists(percorso):
         return None 
 
     lista_dati = []
-    # Tentiamo diverse codifiche per evitare errori
     encodings = ['utf-8', 'latin-1', 'cp1252']
     
     for encoding in encodings:
         try:
             with open(percorso, mode='r', encoding=encoding) as file:
-                # Google Sheets usa la virgola
                 reader = csv.DictReader(file, delimiter=',')
                 for riga in reader:
                     lista_dati.append(riga)
@@ -33,47 +80,35 @@ def carica_database(nome_file):
             return None 
     return None
 
-# Funzione per trasformare la lista in testo per l'AI
 def database_to_string(database_list):
     if not database_list:
         return "Nessun dato disponibile."
-    # Prende le chiavi (intestazioni) dal primo elemento
     header = " | ".join(database_list[0].keys())
     rows = []
     for riga in database_list:
-        # Unisce i valori di ogni riga
         rows.append(" | ".join(str(v) for v in riga.values()))
     return header + "\n" + "\n".join(rows)
 
-# --- CARICAMENTO EFFETTIVO ---
-# Usiamo i nomi in MINUSCOLO come hai impostato su GitHub
+# Caricamento
 master_database = carica_database('mastertb.csv') 
 faq_database = carica_database('faq.csv')
 location_database = carica_database('location.csv')
 
-# --- CONTROLLI DI SICUREZZA ---
+# Controlli
 if master_database is None:
     st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'. Verifica che il file su GitHub sia scritto TUTTO MINUSCOLO.")
     st.stop()
 
-# Prepariamo i dati per il prompt dell'AI
 csv_data_string = database_to_string(master_database)
 
-# Gestione opzionale degli altri file
-if faq_database is None:
-    st.warning("⚠️ Attenzione: 'faq.csv' non caricato.")
-    faq_database = [] 
-
-if location_database is None:
-    st.warning("⚠️ Attenzione: 'location.csv' non caricato.")
-    location_database = []
-
+# Gestione opzionale
+if faq_database is None: faq_database = [] 
+if location_database is None: location_database = []
 
 # --- 3. CONFIGURAZIONE API E PASSWORD ---
 api_key = st.secrets["GOOGLE_API_KEY"]
 PASSWORD_SEGRETA = "TeamBuilding2025#"
 
-# Login
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -88,113 +123,81 @@ if not st.session_state.authenticated:
             st.error("Password errata")
     st.stop()
 
-# --- 4. IL CERVELLO (PROMPT) ---
+# --- 4. IL CERVELLO (PROMPT AGGIORNATO PER FORMATTAZIONE) ---
 BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
-Strumento ad uso interno. Rispondi in Italiano.
+Rispondi in Italiano.
 
-### 🎯 OBIETTIVO
-Massimizzare la conversione.
-1.  Proporre i format giusti (Regola dei 12).
-2.  Calcolare il **COSTO TOTALE DELL'EVENTO** (non a persona).
-3.  Non mostrare mai i calcoli e i moltiplicatori
+### 🎨 REGOLE VISUALI (FONDAMENTALI)
+1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente al contenuto (es. 👨‍🍳 per cucina, 🕵️ per crime, 🎨 per arte, 🧱 per costruzioni, 🏃 per sport). Non usare icone generiche come 🏆 ovunque.
+2.  **PULIZIA:** Non usare elenchi puntati o icone nel corpo della descrizione. Solo testo scorrevole.
+3.  **STRUTTURA:**
+    * Descrizione Format (Titolo + Motivazione)
+    * **TABELLA FINALE RIEPILOGATIVA** (Obbligatoria)
 
----
+### 🔢 MOTORE DI CALCOLO PREVENTIVI
+Quando richiesto, calcola il prezzo usando i dati del Database.
 
-### 🔢 MOTORE DI CALCOLO PREVENTIVI (Formula Totale)
-Quando richiesto, calcola il prezzo usando i dati del [DATABASE INTERNO] fornito alla fine.
+**PASSO 1: Trova i dati**
+Cerca il format e prendi `P_BASE` e `METODO`.
 
-**PASSO 1: Trova i dati nel Database**
-Cerca il format e prendi:
-* `P_BASE` (Prezzo indicato dopo "Pricing:")
-* `METODO` (Standard o Flat)
+**PASSO 2: Calcola il Totale**
+🔴 **SE METODO = "Standard":**
+`TOTALE = P_BASE * (Moltiplicatore Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * NUMERO PARTECIPANTI`
 
-**PASSO 2: Seleziona la Formula**
-
-🔴 **SE METODO = "Standard" (o vuoto):**
-La formula per il **TOTALE** è:
-`TOTALE = P_BASE * (Moltiplicatore Pax * Moltiplicatore Durata * Moltiplicatore Lingua * Moltiplicatore Location * Moltiplicatore Stagione) * NUMERO PARTECIPANTI`
-
-**TABELLA MOLTIPLICATORI:**
-* **M_PAX (Quantità):**
-    * < 5: x 3.20
-    * 5 - 10: x 1.60
-    * 11 - 20: x 1.05
-    * 21 - 30: x 0.95
-    * 31 - 60: x 0.90
-    * 61 - 90: x 0.90
-    * 91 - 150: x 0.85
-    * 151 - 250: x 0.70
-    * 251 - 350: x 0.63
-    * 351 - 500: x 0.55
-    * 501 - 700: x 0.50
-    * 701 - 900: x 0.49
-    * > 900: x 0.30
-* **M_DURATA:** ≤1h (x 1.05) | 1-2h (x 1.07) | 2-4h (x 1.10) | >4h (x 1.15)
-* **M_LINGUA:** Italiano (x 1.05) | Inglese (x 1.10)
-* **M_LOCATION:** Milano (x 1.00) | Roma (x 0.95) | Centro (x 1.05) | Nord/Sud (x 1.15) | Isole (x 1.30)
-* **M_STAGIONE:** Mag-Ott (x 1.10) | Nov-Apr (x 1.02)
+* **M_PAX:** <5 (3.20) | 5-10 (1.60) | 11-20 (1.05) | 21-30 (0.95) | 31-60 (0.90) | 61-90 (0.90) | 91-150 (0.85) | 151-250 (0.70) | 251-350 (0.63) | 351-500 (0.55) | 501-700 (0.50) | >900 (0.30)
+* **M_DURATA:** ≤1h (1.05) | 1-2h (1.07) | 2-4h (1.10) | >4h (1.15)
+* **M_LINGUA:** Ita (1.05) | Eng (1.10)
+* **M_LOCATION:** Mi (1.00) | Rm (0.95) | Centro (1.05) | Nord/Sud (1.15) | Isole (1.30)
+* **M_STAGIONE:** Mag-Ott (1.10) | Nov-Apr (1.02)
 
 🔵 **SE METODO = "Flat":**
-Usa l'interpolazione lineare sul totale.
-* Formula Base: `1800 + ((Numero Partecipanti - 20) * 4.80)`
-* Eccezione: Se nel database c'è scritto "Costo Fisso: X", somma quel valore al risultato.
-* A questo totale, applica SOLO i moltiplicatori Location e Lingua.
+`1800 + ((Pax - 20) * 4.80)` + Eventuale Costo Fisso. Applica poi M_Location e M_Lingua.
 
-**PASSO 3: REGOLA MINIMUM SPENDING (Fondamentale)**
-Se il TOTALE calcolato è inferiore a **€ 1.800,00**, il preventivo finale è **€ 1.800,00**.
+**MINIMUM SPENDING:** Se Totale < 1.800€ -> Arrotonda a 1.800€.
 
 ---
 
 ### 🚦 FLUSSO DI LAVORO
 
-**COMANDO SPECIALE "RESET" o "NUOVO":**
-Se l'utente scrive "Reset", "Nuovo" o "Stop", DIMENTICA tutti i dati precedenti e ricomincia.
+**FASE 1: LA PROPOSTA (Regola dei 12)**
+Seleziona 12 format (4 Best Seller, 4 Novità, 2 Vibe, 2 Social).
 
-FASE 0: INTERVISTA
-Se mancano i dati (Pax, Data, Obiettivo), chiedili subito.
+**OUTPUT PER OGNI FORMAT:**
+Devi scrivere SOLO:
+### [Icona Tematica] [Nome Format]
+*Perché:* [Motivazione sintetica di 2 righe].
+*Note:* [Solo se ci sono vincoli critici].
 
-FASE 1: LA PROPOSTA STRATEGICA (La Regola dei 12)
-Proponi sempre una rosa di 12 FORMAT selezionati dal Database:
-1. I 4 BEST SELLER
-2. LE 4 NOVITÀ
-3. I 2 VIBE
-4. I 2 SOCIAL
+⛔ **NON SCRIVERE IL PREZZO O IL LINK QUI SOTTO AL FORMAT.**
 
-**Output visivo per ogni format:**
-    > 🏆 **[Nome Format]**
-    > 📄 **Scheda:** [Link PDF Ita]
-    > 💡 *Perché:* [Motivazione]
+**FASE 2: TABELLA RIEPILOGATIVA (Obbligatoria alla fine)**
+Dopo aver elencato i format, crea una tabella Markdown con 3 colonne:
+| Format | Prezzo Totale (+IVA) | Scheda Tecnica |
+| :--- | :--- | :--- |
+| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica PDF](link) |
+| 🕵️ CSI Crime | € 1.800,00 | [Scarica PDF](link) |
+...e così via per tutti i format proposti.
 
-**FASE 2: IL PREVENTIVO **
-Mostra solo il **TOTALE** stimato. Non mostrare i calcoli matematici.
+Se l'utente scrive "Reset", cancella la memoria.
 """
 
-# Uniamo le istruzioni con il contenuto del CSV convertito in stringa
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMAT AGGIORNATO]\n\n{csv_data_string}"
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE DATI]\n\n{csv_data_string}"
 
 # --- 5. CONFIGURAZIONE AI ---
 genai.configure(api_key=api_key)
 
-generation_config = {
-  "temperature": 0.0, 
-  "top_p": 0.95,
-  "top_k": 40,
-  "max_output_tokens": 8192,
-}
-
-safety_settings = {
+# Utilizziamo Gemini 3 Pro Preview
+model = genai.GenerativeModel(
+  model_name="gemini-3-pro-preview", 
+  generation_config={"temperature": 0.0},
+  system_instruction=FULL_SYSTEM_PROMPT,
+  safety_settings={
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-}
-
-model = genai.GenerativeModel(
-  model_name="gemini-3-pro-preview", 
-  generation_config={"temperature": 0.0},
-  system_instruction=FULL_SYSTEM_PROMPT, # <--- CORRETTO: Usiamo la variabile che esiste davvero!
-  safety_settings=safety_settings,
+  },
 )
 
 # --- 6. INTERFACCIA CHAT ---
@@ -203,30 +206,25 @@ st.caption("Assistente Virtuale Senior - MasterTb Connected")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    welcome = "Ciao! Ho caricato il nuovo Database MasterTb. Sono pronto. Dimmi numero pax, data e obiettivo."
+    welcome = "Ciao! Sono pronto. Dimmi numero pax, data e obiettivo."
     st.session_state.messages.append({"role": "model", "content": welcome})
 
-# Mostra cronologia
 for message in st.session_state.messages:
     role = message["role"]
     with st.chat_message(role):
         st.markdown(message["content"])
 
-# Input Utente
 if prompt := st.chat_input("Scrivi qui la richiesta..."):
-    # 1. Aggiungi user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Gestione RESET
     if prompt.lower().strip() in ["reset", "nuovo", "cancella", "stop"]:
         st.session_state.messages = []
         st.rerun()
 
-    # 3. Genera risposta AI
     with st.chat_message("model"):
-        with st.spinner("Elaborazione con Gemini 3.0..."):
+        with st.spinner("Elaborazione con Gemini 3 Pro..."):
             try:
                 history_gemini = []
                 for m in st.session_state.messages:
@@ -243,5 +241,3 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
-
-
