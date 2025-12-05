@@ -42,7 +42,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- IMPORTAZIONE MODULO ESTERNO ---
-# Importiamo il modulo location. Se fallisce, lo segnaliamo ma non blocchiamo tutto.
 try:
     import locations_module
 except ImportError:
@@ -55,7 +54,6 @@ def carica_database(nome_file):
     if not os.path.exists(percorso):
         return None 
 
-    # Proviamo diversi encoding e delimitatori
     encodings = ['utf-8', 'latin-1', 'cp1252']
     delimiters = [',', ';'] 
     
@@ -63,7 +61,6 @@ def carica_database(nome_file):
         for delimiter in delimiters:
             try:
                 with open(percorso, mode='r', encoding=encoding) as file:
-                    # Sniffing rapido per capire se il delimitatore è quello giusto
                     sample = file.read(1024)
                     file.seek(0)
                     if delimiter in sample:
@@ -102,7 +99,6 @@ csv_data_string = database_to_string(master_database)
 
 # --- 3. COSTRUZIONE DEL CERVELLO (LOCATION) ---
 location_instructions_block = ""
-# Logica silenziosa: se il modulo e i dati ci sono, li carichiamo nel prompt
 if locations_module and location_database:
     loc_db_string = database_to_string(location_database)
     if loc_db_string:
@@ -137,14 +133,24 @@ Rispondi in Italiano.
 
 ### 🎨 REGOLE VISUALI
 1.  **ICONE:** Usa un'icona tematica nel titolo di ogni format.
-2.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format. Niente linee divisorie.
+2.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format e anche dopo l'ultimo format proposto. Niente linee divisorie.
 3.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
 
 ### 🔢 CALCOLO PREVENTIVI
-**PASSO 1:**
-🔴 **Standard:** `TOT = P_BASE * (M_Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * PAX`
-🔵 **Flat:** `TOT = 1800 + ((Pax - 20) * 4.80)` + Extra.
-**PASSO 2:** Arrotondamento (Regola 39). Minimo € 1.800,00.
+**PASSO 1: Calcolo Matematico**
+🔴 **SE METODO = "Standard":**
+`TOTALE_GREZZO = P_BASE * (Moltiplicatore Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * PAX`
+🔵 **SE METODO = "Flat":**
+Usa questa formula a scaglioni:
+* **Se Pax <= 100:** `TOTALE_GREZZO = 1000 + (40 * Pax)`
+* **Se Pax > 100:** `TOTALE_GREZZO = 5000 + ((Pax - 100) * 13.50)`
+*(Applica poi eventuali extra o Moltiplicatori Location/Lingua al totale)*.
+
+**PASSO 2: Arrotondamento (Regola del 39)**
+Prendi le ultime due cifre del totale:
+* **Fino a 39 (es. 2235):** Arrotonda per DIFETTO al centinaio (-> 2.200).
+* **Da 40 (es. 2245):** Arrotonda per ECCESSO al centinaio (-> 2.300).
+* **Minimum Spending:** Il preventivo finale non può mai essere inferiore a € 1.800,00.
 
 ---
 
@@ -154,7 +160,7 @@ Rispondi in Italiano.
 Default 12 format (o numero richiesto dall'utente).
 Struttura:
 ### [Icona] [Nome]
-[Descrizione discorsiva di 3-4 righe.]
+[Descrizione discorsiva di 2-3 righe.]
 (Spazio vuoto)
 
 **FASE 2: TABELLA RIEPILOGATIVA**
