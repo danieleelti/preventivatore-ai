@@ -1,13 +1,13 @@
 import streamlit as st
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
-import pandas as pd
-# --- INIZIO NUOVO BLOCCO DATABASE (AGGIORNATO) ---
-# --- CARICAMENTO DATABASE (Versione Definitiva) ---
 import csv
 import os
-import streamlit as st
 
+# --- 1. CONFIGURAZIONE PAGINA (PRIMA RIGA OBBLIGATORIA) ---
+st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
+
+# --- 2. GESTIONE DATABASE (Caricamento Sicuro) ---
 @st.cache_data(show_spinner=False)
 def carica_database(nome_file):
     percorso = os.path.join(os.getcwd(), nome_file)
@@ -16,11 +16,13 @@ def carica_database(nome_file):
         return None 
 
     lista_dati = []
-    encodings = ['utf-8', 'latin-1']
+    # Tentiamo diverse codifiche per evitare errori
+    encodings = ['utf-8', 'latin-1', 'cp1252']
     
     for encoding in encodings:
         try:
             with open(percorso, mode='r', encoding=encoding) as file:
+                # Google Sheets usa la virgola
                 reader = csv.DictReader(file, delimiter=',')
                 for riga in reader:
                     lista_dati.append(riga)
@@ -31,16 +33,33 @@ def carica_database(nome_file):
             return None 
     return None
 
-# --- QUI È LA MODIFICA: tutto minuscolo ---
+# Funzione per trasformare la lista in testo per l'AI
+def database_to_string(database_list):
+    if not database_list:
+        return "Nessun dato disponibile."
+    # Prende le chiavi (intestazioni) dal primo elemento
+    header = " | ".join(database_list[0].keys())
+    rows = []
+    for riga in database_list:
+        # Unisce i valori di ogni riga
+        rows.append(" | ".join(str(v) for v in riga.values()))
+    return header + "\n" + "\n".join(rows)
+
+# --- CARICAMENTO EFFETTIVO ---
+# Usiamo i nomi in MINUSCOLO come hai impostato su GitHub
 master_database = carica_database('mastertb.csv') 
 faq_database = carica_database('faq.csv')
 location_database = carica_database('location.csv')
 
-# --- CONTROLLI ---
+# --- CONTROLLI DI SICUREZZA ---
 if master_database is None:
-    st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'. Verifica di aver rinominato il file in minuscolo anche su GitHub!")
+    st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'. Verifica che il file su GitHub sia scritto TUTTO MINUSCOLO.")
     st.stop()
 
+# Prepariamo i dati per il prompt dell'AI
+csv_data_string = database_to_string(master_database)
+
+# Gestione opzionale degli altri file
 if faq_database is None:
     st.warning("⚠️ Attenzione: 'faq.csv' non caricato.")
     faq_database = [] 
@@ -48,35 +67,28 @@ if faq_database is None:
 if location_database is None:
     st.warning("⚠️ Attenzione: 'location.csv' non caricato.")
     location_database = []
-# --- FINE NUOVO BLOCCO DATABASE ---
 
 
-# --- 1. QUESTA DEVE ESSERE LA PRIMA RIGA DI STREAMLIT ---
-st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
-
-# --- CONFIGURAZIONE API ---
+# --- 3. CONFIGURAZIONE API E PASSWORD ---
 api_key = st.secrets["GOOGLE_API_KEY"]
-
-# PASSWORD PER LO STAFF
 PASSWORD_SEGRETA = "TeamBuilding2025#"
 
-# --- CARICAMENTO DATABASE CSV ---
-@st.cache_data(ttl=600) # Cache per non ricaricare il CSV ad ogni click, si aggiorna ogni 10 min
-def load_database():
-    try:
-        df = pd.read_csv("MasterTb.csv", sep=None, engine='python')
-        # Converte il CSV in una stringa Markdown ben formattata per l'AI
-        return df.to_markdown(index=False)
-    except Exception as e:
-        return None
+# Login
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-csv_data = load_database()
-
-if csv_data is None:
-    st.error("⚠️ ERRORE CRITICO: Non trovo il file 'MasterTb.csv'. Caricalo nella repo di GitHub!")
+if not st.session_state.authenticated:
+    st.title("🔒 Area Riservata")
+    pwd = st.text_input("Inserisci Password Staff", type="password")
+    if st.button("Accedi"):
+        if pwd == PASSWORD_SEGRETA:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Password errata")
     st.stop()
 
-# --- IL CERVELLO (SYSTEM PROMPT PARTE FISSA) ---
+# --- 4. IL CERVELLO (PROMPT) ---
 BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
 Strumento ad uso interno. Rispondi in Italiano.
@@ -102,8 +114,6 @@ Cerca il format e prendi:
 🔴 **SE METODO = "Standard" (o vuoto):**
 La formula per il **TOTALE** è:
 `TOTALE = P_BASE * (Moltiplicatore Pax * Moltiplicatore Durata * Moltiplicatore Lingua * Moltiplicatore Location * Moltiplicatore Stagione) * NUMERO PARTECIPANTI`
-
-*Esempio logica: (80€ * 1.1 * 1.0) * 20 persone = 1.760€ (che poi diventa 1.800€ per il minimo).*
 
 **TABELLA MOLTIPLICATORI:**
 * **M_PAX (Quantità):**
@@ -139,46 +149,31 @@ Se il TOTALE calcolato è inferiore a **€ 1.800,00**, il preventivo finale è 
 ### 🚦 FLUSSO DI LAVORO
 
 **COMANDO SPECIALE "RESET" o "NUOVO":**
-Se l'utente scrive "Reset", "Nuovo" o "Stop", DIMENTICA tutti i dati precedenti (Pax, Data, Location) e ricomincia dalla FASE 0 salutando come se fosse un nuovo cliente.
+Se l'utente scrive "Reset", "Nuovo" o "Stop", DIMENTICA tutti i dati precedenti e ricomincia.
 
 FASE 0: INTERVISTA
-Se l'utente non ti da i dati (Pax, Data, Obiettivo, tempo a disposizione per l'attività), chiedili subito. Non fare preventivi al buio.
+Se mancano i dati (Pax, Data, Obiettivo), chiedili subito.
 
 FASE 1: LA PROPOSTA STRATEGICA (La Regola dei 12)
-Proponi sempre una rosa di 12 FORMAT selezionati dal Database, distribuiti tassativamente così:
+Proponi sempre una rosa di 12 FORMAT selezionati dal Database:
+1. I 4 BEST SELLER
+2. LE 4 NOVITÀ
+3. I 2 VIBE
+4. I 2 SOCIAL
 
-1. I 4 BEST SELLER (Le Certezze): Scegli prioritariamente tra questi format (se adatti alla richiesta):
-CSI Project, Chain Reaction, Escape Box, AperiBuilding, Cooking, Treasure Hunt, Sarabanda, Cinema, Lego Building, Actors Studio, Cartoon Car Race, Cocktail Building, Affresco, Squid Game, Bike Building, Bootcamp, Enigma, Olympic Games, Leonardo da Vinci.
-
-2. LE 4 NOVITÀ (L'Innovazione): Scegli dal Database i format etichettati come "Novità: si" o quelli più tecnologici (es. AI, VR).
-
-3. I 2 VIBE: Scegli quelli che meglio sposano l'emozione richiesta (Relax, Adrenalina, Creatività...).
-
-4. I 2 SOCIAL: Scegli format CSR/Beneficenza (es. Animal House, Energy for Africa...).
-
-VINCOLI:
-Inverno (Nov-Mar): NO Outdoor (salvo richiesta esplicita).
-Pasti: NO Outdoor durante pranzi/cene.
-Varietà: Non proporre sempre gli stessi 4. Ruota le opzioni se possibile.
-
-* **Output visivo per ogni format:**
+**Output visivo per ogni format:**
     > 🏆 **[Nome Format]**
-    > 📄 **Scheda:** [Link PDF Ita cliccabile]
+    > 📄 **Scheda:** [Link PDF Ita]
     > 💡 *Perché:* [Motivazione]
-    > ⚠️ *Note:* [Note se presenti]
 
 **FASE 2: IL PREVENTIVO **
 Mostra solo il **TOTALE** stimato. Non mostrare i calcoli matematici.
-*Esempio output:* "Il costo totale per [Nome Format] per [N] persone è di **€ 2.200,00 + IVA**".
-
-**FASE 3: OVERRIDE OPERATORE**
-L'operatore comanda. Se dice "Sconta 10%" o "Fai 2000€", esegui ignorando le regole sopra.
 """
 
-# Uniamo le istruzioni con il contenuto del CSV
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMAT AGGIORNATO]\n\n{csv_data}"
+# Uniamo le istruzioni con il contenuto del CSV convertito in stringa
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMAT AGGIORNATO]\n\n{csv_data_string}"
 
-# --- CODICE TECNICO ---
+# --- 5. CONFIGURAZIONE AI ---
 genai.configure(api_key=api_key)
 
 generation_config = {
@@ -188,7 +183,6 @@ generation_config = {
   "max_output_tokens": 8192,
 }
 
-# --- CONFIGURAZIONE SICUREZZA ---
 safety_settings = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
@@ -196,31 +190,14 @@ safety_settings = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
-# Utilizziamo Gemini 2.0 Flash Exp (il più avanzato attualmente disponibile)
-# Se hai accesso a una beta privata chiamata "gemini-3.0", modifica il nome qui sotto.
 model = genai.GenerativeModel(
-  model_name="gemini-2.0-flash-exp", 
-  generation_config=generation_config,
-  system_instruction=FULL_SYSTEM_PROMPT,
-  safety_settings=safety_settings,
+    model_name="gemini-3-pro-preview",
+    generation_config={"temperature": 0.0}, 
+    system_instruction=full_prompt_with_data, # <-- Qui passiamo l'unica mega-variabile
+    safety_settings=safety_settings,
 )
 
-# Login Semplice
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.title("🔒 Area Riservata")
-    pwd = st.text_input("Inserisci Password Staff", type="password")
-    if st.button("Accedi"):
-        if pwd == PASSWORD_SEGRETA:
-            st.session_state.authenticated = True
-            st.rerun()
-        else:
-            st.error("Password errata")
-    st.stop()
-
-# App Vera e Propria
+# --- 6. INTERFACCIA CHAT ---
 st.title("🦁 Preventivatore AI")
 st.caption("Assistente Virtuale Senior - MasterTb Connected")
 
@@ -266,6 +243,3 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
-
-
-
