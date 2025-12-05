@@ -168,6 +168,7 @@ location_instructions_block = ""
 if locations_module and location_database:
     loc_db_string = database_to_string(location_database)
     if loc_db_string:
+        # Recupera le istruzioni pulite dal modulo aggiornato
         location_instructions_block = locations_module.get_location_instructions(loc_db_string)
 
 # --- 4. CONFIGURAZIONE API E PASSWORD ---
@@ -260,8 +261,10 @@ Per separare i blocchi, copia e incolla questo HTML sostituendo solo il testo:
 [Scrivi 2-3 righe discorsive sul PERCHÉ lo consigliamo. Niente emoji qui.]
 (Due invio vuoti)
 
-**FASE 2: SUGGERIMENTO LOCATION (Solo se richiesto)**
-*SE E SOLO SE* richiesto dall'utente:
+**FASE 2: SUGGERIMENTO LOCATION (CONDIZIONALE)**
+⚠️ **ATTENZIONE:** Se l'utente NON ha chiesto esplicitamente una location o "dove farlo", **SALTA COMPLETAMENTE QUESTA FASE**. Non scrivere nulla, nemmeno il titolo.
+
+*SE E SOLO SE* l'utente ha chiesto location:
 1.  Titolo: **## Location**
 2.  Elenca le location seguendo RIGOROSAMENTE le istruzioni fornite nel Modulo Location (NO EMOJI, NO RANKING, SOLO TESTO PULITO).
 
@@ -286,7 +289,7 @@ Copia questo blocco esatto:
 
 ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
 
-✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è sopratutto formazione, parliamone!
+✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
 
 ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
 
@@ -357,4 +360,3 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
-
