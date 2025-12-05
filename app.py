@@ -102,13 +102,11 @@ csv_data_string = database_to_string(master_database)
 
 # --- 3. COSTRUZIONE DEL CERVELLO (LOCATION) ---
 location_instructions_block = ""
+# Logica silenziosa: se il modulo e i dati ci sono, li carichiamo nel prompt
 if locations_module and location_database:
     loc_db_string = database_to_string(location_database)
     if loc_db_string:
-        # Passiamo i dati al modulo esterno
         location_instructions_block = locations_module.get_location_instructions(loc_db_string)
-        # Feedback discreto nella sidebar
-        st.sidebar.success(f"✅ Location caricate: {len(location_database)}")
 
 # --- 4. CONFIGURAZIONE API E PASSWORD ---
 api_key = st.secrets["GOOGLE_API_KEY"]
@@ -178,7 +176,7 @@ Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola:
 Se l'utente scrive "Reset", cancella la memoria.
 """
 
-# Assembliamo il Prompt: Istruzioni Base + Istruzioni Location (se presenti) + Database Format
+# Assembliamo il Prompt
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
 # --- 6. AVVIO AI ---
