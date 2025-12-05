@@ -319,7 +319,7 @@ model = genai.GenerativeModel(
 )
 
 # --- 7. CHAT ---
-st.title("🦁 Preventivatore AI")
+st.title("💶 🦁 💰 FATTURAGE 💰 🦁 💶")
 st.caption("Assistente Virtuale Senior - MasterTb Connected")
 
 if "messages" not in st.session_state:
@@ -360,4 +360,5 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
