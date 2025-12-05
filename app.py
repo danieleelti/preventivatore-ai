@@ -47,6 +47,8 @@ st.markdown("""
     div[data-testid="stChatMessage"] td { border-bottom: 1px solid #ddd !important; padding: 10px !important; }
     div[data-testid="stChatMessage"] a { color: #1a73e8 !important; text-decoration: underline !important; }
     div[data-testid="stChatMessage"] hr { display: none !important; }
+    /* Nasconde i bullet point standard delle liste per evitare il doppio pallino */
+    div[data-testid="stChatMessage"] ul { list-style-type: none !important; padding-left: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -217,8 +219,11 @@ Struttura:
 **FASE 2: SUGGERIMENTO LOCATION (Solo se richiesto)**
 *SE E SOLO SE* l'utente ha chiesto una location o un consiglio su dove svolgere l'evento:
 1. Inserisci OBBLIGATORIAMENTE il titolo: **## Location** (Usa due hashtag per H2).
-2. Elenca le location suggerite subito dopo.
-3. ⚠️ **VIETATO USARE ICONE O EMOJI NELLA SEZIONE LOCATION.** Nemmeno una. Usa solo testo puro e bullet points classici (*). Stile serio e pulito.
+2. Elenca le location suggerite subito dopo come una lista NEUTRA.
+3. ⚠️ **VIETATO USARE ICONE, EMOJI O NUMERI.** - NON fare classifiche o ranking (1., 2., 3.). 
+   - NON usare numeri.
+   - Usa solo bullet points classici (*).
+   - Solo testo puro.
 Mantieni lo stesso distanziamento (due invio vuoti) prima e dopo la sezione location.
 Se l'utente NON ha chiesto location, SALTA questa fase.
 
@@ -229,15 +234,15 @@ Genera la tabella riassuntiva dei costi.
 | 👨‍🍳 Cooking | € 2.400,00 | [Scarica Cooking in pdf](URL) |
 
 **FASE 4: INFO UTILI (OBBLIGATORIO)**
-Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola:
+Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola e NON aggiungere pallini neri prima delle spunte (fai una lista pulita):
 
-### ℹ️ Informazioni Utili
-* ✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
-* ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
-* ✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
-* ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
-* ✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
-* ✔️ **Chiedici anche** servizio video/foto e gadget.
+### Informazioni Utili
+✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+✔️ **Chiedici anche** servizio video/foto e gadget.
 
 Se l'utente scrive "Reset", cancella la memoria.
 """
