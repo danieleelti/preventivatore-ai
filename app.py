@@ -19,6 +19,15 @@ st.markdown("""
         line-height: 1.6 !important;
         margin-bottom: 15px !important;
     }
+    div[data-testid="stChatMessage"] h2 {
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 24px !important;
+        font-weight: bold !important;
+        color: #000000 !important;
+        margin-top: 40px !important; margin-bottom: 20px !important;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 5px;
+    }
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 18px !important;
@@ -161,15 +170,15 @@ Segui rigorosamente questo ordine per costruire la risposta:
 **FASE 1: I FORMAT (Priorità Alta)**
 Elenca i format scelti (Default 12 o numero richiesto).
 Struttura:
-### [Icona] [Nome]
+### Icona Nome
 [Descrizione discorsiva MOLTO SINTETICA. Massimo 2-3 righe. Vai dritto al punto, niente fronzoli.]
 (Due invio vuoti)
 
 **FASE 2: SUGGERIMENTO LOCATION (Solo se richiesto)**
 *SE E SOLO SE* l'utente ha chiesto una location o un consiglio su dove svolgere l'evento:
-1. Inserisci OBBLIGATORIAMENTE il titolo: **## Location**
+1. Inserisci OBBLIGATORIAMENTE il titolo: **## Location** (NOTA: Usa due hashtag per farlo grande, ma NON metterlo in grassetto o tra asterischi).
 2. Elenca le location suggerite subito dopo.
-3. ⚠️ **IMPORTANTE:** In questa lista location NON USARE ICONE O EMOJI. Usa solo bullet points classici (*). Stile pulito e formale.
+3. ⚠️ **VIETATO USARE ICONE O EMOJI NELLA SEZIONE LOCATION.** Nemmeno una. Usa solo testo puro e bullet points classici (*). Stile serio e pulito.
 Mantieni lo stesso distanziamento (due invio vuoti) prima e dopo la sezione location.
 Se l'utente NON ha chiesto location, SALTA questa fase.
 
