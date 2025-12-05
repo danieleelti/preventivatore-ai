@@ -10,52 +10,44 @@ import streamlit as st
 
 @st.cache_data(show_spinner=False)
 def carica_database(nome_file):
-    # Costruisce il percorso sicuro
     percorso = os.path.join(os.getcwd(), nome_file)
     
-    # Se il file non esiste, ritorna lista vuota (gestito dopo)
     if not os.path.exists(percorso):
         return None 
 
     lista_dati = []
-    # Tentativo 1: Standard (UTF-8)
-    # Tentativo 2: Excel/Windows (Latin-1) se ci sono accenti strani
     encodings = ['utf-8', 'latin-1']
     
     for encoding in encodings:
         try:
             with open(percorso, mode='r', encoding=encoding) as file:
-                # Google Sheets usa la virgola come separatore
                 reader = csv.DictReader(file, delimiter=',')
                 for riga in reader:
                     lista_dati.append(riga)
-            return lista_dati # Successo!
+            return lista_dati
         except UnicodeDecodeError:
-            continue # Prova il prossimo encoding
+            continue
         except Exception:
-            return None # Errore generico
-
+            return None 
     return None
 
-# Caricamento effettivo
-master_database = carica_database('MasterTb.csv')
+# --- QUI È LA MODIFICA: tutto minuscolo ---
+master_database = carica_database('mastertb.csv') 
 faq_database = carica_database('faq.csv')
 location_database = carica_database('location.csv')
 
-# --- CONTROLLO DI SICUREZZA ---
-# Se MasterTb fallisce, blocchiamo tutto con un messaggio chiaro
+# --- CONTROLLI ---
 if master_database is None:
-    st.error("⚠️ ERRORE CRITICO: Impossibile leggere 'MasterTb.csv'. Verifica che sia stato caricato su GitHub e che sia un CSV separato da virgole.")
+    st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'. Verifica di aver rinominato il file in minuscolo anche su GitHub!")
     st.stop()
-    
-# Se faq o location mancano, avvisiamo ma lasciamo andare avanti
+
 if faq_database is None:
-    st.warning("⚠️ Attenzione: 'faq.csv' non caricato o vuoto. Il bot risponderà senza FAQ.")
-    faq_database = [] # Evita errori dopo
+    st.warning("⚠️ Attenzione: 'faq.csv' non caricato.")
+    faq_database = [] 
 
 if location_database is None:
-    st.warning("⚠️ Attenzione: 'location.csv' non caricato o vuoto.")
-    location_database = [] # Evita errori dopo
+    st.warning("⚠️ Attenzione: 'location.csv' non caricato.")
+    location_database = []
 # --- FINE NUOVO BLOCCO DATABASE ---
 
 
@@ -274,5 +266,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
 
 
