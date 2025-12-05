@@ -145,13 +145,39 @@ Rispondi in Italiano.
 2.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format. Niente linee divisorie.
 3.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
 
-### 🔢 CALCOLO PREVENTIVI (RIGOROSO)
-**ATTENZIONE:** Il metodo di calcolo dipende dal **TIPO DI FORMAT**, non dal numero di persone.
+### 🔢 CALCOLO PREVENTIVI
 
-🔴 **CASO A: METODO "Standard" (La maggior parte dei format)**
-Se il format è "Standard" (o non è specificato come Flat), usa SEMPRE questa formula, **ANCHE SE IL GRUPPO È GRANDE (es. 500, 1000 pax)**. Non passare al metodo Flat solo perché il numero è alto.
-`TOTALE_GREZZO = P_BASE * (Moltiplicatore Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * PAX`
-*(Assicurati di usare il Moltiplicatore Pax corretto per il numero di partecipanti).*
+**1. TABELLE MOLTIPLICATORI (Reference Table)**
+Usa questi valori esatti per i calcoli "Standard".
+
+* **M_PAX (In base al numero partecipanti):**
+    * < 5 pax: **x 3.20**
+    * 5 - 10 pax: **x 1.60**
+    * 11 - 20 pax: **x 1.05**
+    * 21 - 30 pax: **x 0.95**
+    * 31 - 60 pax: **x 0.90**
+    * 61 - 90 pax: **x 0.90**
+    * 91 - 150 pax: **x 0.85**
+    * 151 - 250 pax: **x 0.70**
+    * 251 - 350 pax: **x 0.63**
+    * 351 - 500 pax: **x 0.55**
+    * 501 - 700 pax: **x 0.50**
+    * 701 - 900 pax: **x 0.49**
+    * > 900 pax: **x 0.30**
+
+* **M_DURATA:** ≤1h (x 1.05) | 1-2h (x 1.07) | 2-4h (x 1.10) | >4h (x 1.15)
+* **M_LINGUA:** Italiano (x 1.05) | Inglese (x 1.10)
+* **M_LOCATION:** Milano (x 1.00) | Roma (x 0.95) | Centro Italia (x 1.05) | Nord/Sud (x 1.15) | Isole (x 1.30)
+* **M_STAGIONE:** Maggio-Ottobre (x 1.10) | Novembre-Aprile (x 1.02)
+
+*(Se un valore Durata/Lingua/Location/Stagione non è specificato, usa il default logico o 1.0)*.
+
+**2. FORMULE DI CALCOLO**
+
+🔴 **CASO A: METODO "Standard" (o vuoto)**
+Da usare per tutti i format NON etichettati come "Flat".
+La formula è:
+`TOTALE_GREZZO = P_BASE * (M_PAX * M_DURATA * M_LINGUA * M_LOCATION * M_STAGIONE) * NUMERO PARTECIPANTI`
 
 🔵 **CASO B: METODO "Flat" (o Forfait)**
 Da usare SOLO se "Flat" è scritto esplicitamente nel CSV.
@@ -163,8 +189,8 @@ Usa questi scaglioni progressivi per avvicinarti ai benchmark (20px=1.8k, 40px=2
 * **Pax > 100:** `5.000 + ((Pax - 100) * 13.50)`
 *(Applica eventuali extra Lingua/Location al totale Flat se richiesti)*.
 
-**PASSO 2: Arrotondamento (Regola del 39)**
-Prendi le ultime due cifre del totale:
+**3. ARROTONDAMENTO (Regola del 39)**
+Prendi le ultime due cifre del totale ottenuto:
 * **Fino a 39 (es. 2235):** Arrotonda per DIFETTO al centinaio (-> 2.200).
 * **Da 40 (es. 2245):** Arrotonda per ECCESSO al centinaio (-> 2.300).
 * **Minimum Spending:** Il preventivo finale non può mai essere inferiore a € 1.800,00.
@@ -189,7 +215,6 @@ Struttura:
 3. ⚠️ **VIETATO USARE ICONE O EMOJI NELLA SEZIONE LOCATION.** Nemmeno una. Usa solo testo puro e bullet points classici (*). Stile serio e pulito.
 Mantieni lo stesso distanziamento (due invio vuoti) prima e dopo la sezione location.
 Se l'utente NON ha chiesto location, SALTA questa fase.
-4. Non usare icone e emoji nella sezione location per nessun motivo.
 
 **FASE 3: TABELLA RIEPILOGATIVA**
 Genera la tabella riassuntiva dei costi.
@@ -201,12 +226,12 @@ Genera la tabella riassuntiva dei costi.
 Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola:
 
 ### ℹ️ Informazioni Utili
-* ✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
-* ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
-* ✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
-* ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
-* ✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
-* ✔️ **Chiedici anche** servizio video/foto e gadget.
+ ✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+ ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+ ✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+ ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+ ✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+ ✔️ **Chiedici anche** servizio video/foto e gadget.
 
 Se l'utente scrive "Reset", cancella la memoria.
 """
@@ -270,4 +295,3 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
-
