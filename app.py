@@ -286,7 +286,7 @@ Copia questo blocco esatto:
 
 ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
 
-✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è sopratutto formazione, parliamone!
 
 ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
 
@@ -357,3 +357,4 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
