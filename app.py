@@ -7,107 +7,56 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (OTTIMIZZATO) ---
+# --- CSS PERSONALIZZATO (TORNA A CALIBRI 12PX) ---
 st.markdown("""
 <style>
-    /* Importazione Font */
-    @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
-
-    /* --- CONTENITORE MESSAGGI --- */
-    div[data-testid="stChatMessage"] { 
-        background-color: #ffffff !important; 
-        border: 1px solid #f0f2f6;
-        border-radius: 10px;
-        padding: 15px !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
+    /* Forza sfondo bianco per i messaggi */
+    div[data-testid="stChatMessage"] { background-color: #ffffff !important; }
     
-    /* Font e Colore Testo */
-    div[data-testid="stChatMessage"] div[data-testid="stMarkdownContainer"] {
-        font-family: 'Open Sans', 'Calibri', sans-serif !important;
-        color: #1a1a1a !important; 
-    }
-
-    div[data-testid="stChatMessage"] p {
-        font-size: 16px !important;
-        line-height: 1.6 !important;
-        margin-bottom: 15px !important; 
-    }
-    
-    div[data-testid="stChatMessage"] li {
-        font-size: 16px !important;
-        line-height: 1.6 !important;
-        margin-bottom: 8px !important;
-    }
-
-    /* --- TITOLI --- */
-    div[data-testid="stChatMessage"] h2 {
-        font-family: 'Open Sans', sans-serif !important;
-        font-size: 22px !important;
-        font-weight: 700 !important;
-        color: #004e98 !important; 
-        margin-top: 25px !important; 
-        margin-bottom: 15px !important;
-        border-bottom: 2px solid #eaeaea;
-        padding-bottom: 8px;
-    }
-
-    div[data-testid="stChatMessage"] h3 {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-        color: #333333 !important;
-        margin-top: 20px !important; 
+    /* Font Calibri 12px come richiesto */
+    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] div {
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 12px !important;
+        color: #000000 !important;
+        line-height: 1.4 !important;
         margin-bottom: 10px !important;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
     }
-
-    /* --- GRASSETTI E LINK --- */
-    div[data-testid="stChatMessage"] strong { 
-        font-weight: 700 !important; 
-        color: #000000 !important; 
+    
+    /* Titoli proporzionati */
+    div[data-testid="stChatMessage"] h2 {
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        color: #000000 !important;
+        margin-top: 20px !important; margin-bottom: 10px !important;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 5px;
     }
-    div[data-testid="stChatMessage"] a { 
-        color: #0068c9 !important; 
-        text-decoration: none !important; 
-        font-weight: 600;
+    
+    div[data-testid="stChatMessage"] h3 {
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 14px !important;
+        font-weight: bold !important;
+        color: #000000 !important;
+        margin-top: 15px !important; margin-bottom: 5px !important;
     }
-    div[data-testid="stChatMessage"] a:hover { 
-        text-decoration: underline !important; 
-    }
-
-    /* --- TABELLE --- */
+    
+    div[data-testid="stChatMessage"] strong { font-weight: bold !important; color: #000000 !important; }
+    
+    /* Tabelle compatte */
     div[data-testid="stChatMessage"] table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        margin-top: 20px !important;
-        margin-bottom: 20px !important;
-        font-size: 15px !important;
-        border: 1px solid #ddd !important;
+        color: #000000 !important; font-size: 12px !important; width: 100% !important;
+        border-collapse: collapse !important; margin-top: 15px !important; margin-bottom: 15px !important;
     }
     div[data-testid="stChatMessage"] th {
-        background-color: #f8f9fa !important;
-        color: #333 !important;
-        font-weight: 700 !important;
-        text-align: left !important;
-        padding: 12px 15px !important;
-        border-bottom: 2px solid #ddd !important;
+        background-color: #f4f4f4 !important; color: #000000 !important; font-weight: bold !important;
+        text-align: left !important; border-bottom: 2px solid #000 !important; padding: 5px !important;
     }
-    div[data-testid="stChatMessage"] td {
-        padding: 12px 15px !important;
-        border-bottom: 1px solid #eee !important;
-        color: #333 !important;
-    }
-    div[data-testid="stChatMessage"] tr:nth-child(even) {
-        background-color: #fcfcfc !important;
-    }
-
-    /* --- LISTE --- */
-    div[data-testid="stChatMessage"] ul { 
-        list-style-position: inside; 
-        padding-left: 0 !important;
-    }
+    div[data-testid="stChatMessage"] td { border-bottom: 1px solid #ddd !important; padding: 5px !important; }
+    
+    div[data-testid="stChatMessage"] a { color: #1a73e8 !important; text-decoration: underline !important; }
     div[data-testid="stChatMessage"] hr { display: none !important; }
+    div[data-testid="stChatMessage"] ul { list-style-type: none !important; padding-left: 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -274,9 +223,9 @@ FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n#
 # --- 6. AVVIO AI ---
 genai.configure(api_key=api_key)
 
-# Modello
+# Modello impostato su GEMINI 3 PRO PREVIEW come richiesto TASSATIVAMENTE
 model = genai.GenerativeModel(
-  model_name="gemini-1.5-pro", 
+  model_name="gemini-3-pro-preview", 
   generation_config={"temperature": 0.0},
   system_instruction=FULL_SYSTEM_PROMPT,
   safety_settings={
@@ -311,7 +260,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
         st.rerun()
 
     with st.chat_message("model"):
-        with st.spinner("Elaborazione in corso..."):
+        with st.spinner("Elaborazione con Gemini 3 Pro..."):
             try:
                 history_gemini = []
                 for m in st.session_state.messages:
