@@ -227,7 +227,12 @@ Per ogni blocco, usa un Titolo H2 (##) che includa la categoria e un **CLAIM PER
 2.  Elenca le location seguendo RIGOROSAMENTE le istruzioni fornite nel Modulo Location (NO EMOJI, NO RANKING, SOLO TESTO PULITO).
 
 **FASE 3: TABELLA RIEPILOGATIVA**
+Genera la tabella riassuntiva dei costi.
+**⚠️ REGOLA COLONNA PRESENTAZIONE:** Il testo del link deve essere tassativamente **"[Nome Format].pdf"**.
+Esempio corretto:
 | Format | Prezzo Totale (+IVA) | Presentazione |
+| :--- | :--- | :--- |
+| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL) |
 
 **FASE 4: INFO UTILI (OBBLIGATORIO)**
 Copia questo blocco esatto:
