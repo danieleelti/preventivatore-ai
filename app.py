@@ -220,15 +220,17 @@ Struttura:
 *SE E SOLO SE* l'utente ha chiesto una location o un consiglio su dove svolgere l'evento:
 1. Inserisci OBBLIGATORIAMENTE il titolo: **## Location** (Usa due hashtag per H2).
 2. Elenca le location suggerite subito dopo.
-3. ⚠️ **PROTOCOLLO DI PULIZIA TESTO (STRICT):**
-   Il testo nel database delle location potrebbe contenere icone (📍, 🏨, ⭐) o testi come "Dal nostro archivio" e "Ranking: X/5".
-   **DEVI RIMUOVERLI TUTTI.** Non copiare incollare l'output grezzo.
-   Devi **RISCRIVERE** ogni location usando ESATTAMENTE e SOLO questo pattern pulito:
+3. ⚠️ **SANITIZZAZIONE AGGRESSIVA (CRITICO):**
+   Il database contiene elementi sporchi come "📍", "🏨", "DAL NOSTRO ARCHIVIO", "Ranking: 1/5", ecc.
+   **TU NON DEVI COPIARLI.** Devi riscrivere la riga completamente pulita.
    
-   * **Nome Location (Città):** [Scrivi qui la descrizione e il perché è adatta, rimuovendo la parola "Perché"]. Spazi: [Indoor/Outdoor].
+   **ESEMPIO CORREZIONE:**
+   *Input Sbagliato:* "🏨 Grand Hotel Rimini (Rimini) Perché:..."
+   *Output Tuo Corretto:* "* **Grand Hotel Rimini (Rimini):** ..."
 
-   ⛔ **VIETATO:** Usare icone, emoji, parole "Ranking", voti, o elenchi numerati.
-   
+   **FORMATO OBBLIGATORIO (SOLO TESTO):**
+   * **Nome Location (Città):** [Descrizione e perché, senza scrivere "Perché:"]. Spazi: [Indoor/Outdoor].
+
 Mantieni lo stesso distanziamento (due invio vuoti) prima e dopo la sezione location.
 Se l'utente NON ha chiesto location, SALTA questa fase.
 
