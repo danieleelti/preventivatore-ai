@@ -145,15 +145,23 @@ Rispondi in Italiano.
 2.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format. Niente linee divisorie.
 3.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
 
-### 🔢 CALCOLO PREVENTIVI
-**PASSO 1: Calcolo Matematico**
-🔴 **SE METODO = "Standard":**
+### 🔢 CALCOLO PREVENTIVI (RIGOROSO)
+**ATTENZIONE:** Il metodo di calcolo dipende dal **TIPO DI FORMAT**, non dal numero di persone.
+
+🔴 **CASO A: METODO "Standard" (La maggior parte dei format)**
+Se il format è "Standard" (o non è specificato come Flat), usa SEMPRE questa formula, **ANCHE SE IL GRUPPO È GRANDE (es. 500, 1000 pax)**. Non passare al metodo Flat solo perché il numero è alto.
 `TOTALE_GREZZO = P_BASE * (Moltiplicatore Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * PAX`
-🔵 **SE METODO = "Flat":**
-Usa questa formula a scaglioni:
-* **Se Pax <= 100:** `TOTALE_GREZZO = 1000 + (40 * Pax)`
-* **Se Pax > 100:** `TOTALE_GREZZO = 5000 + ((Pax - 100) * 13.50)`
-*(Applica poi eventuali extra o Moltiplicatori Location/Lingua al totale)*.
+*(Assicurati di usare il Moltiplicatore Pax corretto per il numero di partecipanti).*
+
+🔵 **CASO B: METODO "Flat" (o Forfait)**
+Da usare SOLO se "Flat" è scritto esplicitamente nel CSV.
+Usa questi scaglioni progressivi per avvicinarti ai benchmark (20px=1.8k, 40px=2.5k, 60px=3.5k, 100px=5k):
+* **Pax <= 20:** Prezzo Fisso = **€ 1.800,00**
+* **Pax 21 - 40:** `1.800 + ((Pax - 20) * 35)`
+* **Pax 41 - 60:** `2.500 + ((Pax - 40) * 50)`
+* **Pax 61 - 100:** `3.500 + ((Pax - 60) * 37.50)`
+* **Pax > 100:** `5.000 + ((Pax - 100) * 13.50)`
+*(Applica eventuali extra Lingua/Location al totale Flat se richiesti)*.
 
 **PASSO 2: Arrotondamento (Regola del 39)**
 Prendi le ultime due cifre del totale:
@@ -176,11 +184,12 @@ Struttura:
 
 **FASE 2: SUGGERIMENTO LOCATION (Solo se richiesto)**
 *SE E SOLO SE* l'utente ha chiesto una location o un consiglio su dove svolgere l'evento:
-1. Inserisci OBBLIGATORIAMENTE il titolo: **## Location** (NOTA: Usa due hashtag per farlo grande, ma NON metterlo in grassetto o tra asterischi).
+1. Inserisci OBBLIGATORIAMENTE il titolo: **## Location** (Usa due hashtag per H2).
 2. Elenca le location suggerite subito dopo.
 3. ⚠️ **VIETATO USARE ICONE O EMOJI NELLA SEZIONE LOCATION.** Nemmeno una. Usa solo testo puro e bullet points classici (*). Stile serio e pulito.
 Mantieni lo stesso distanziamento (due invio vuoti) prima e dopo la sezione location.
 Se l'utente NON ha chiesto location, SALTA questa fase.
+4. Non usare icone e emoji nella sezione location per nessun motivo.
 
 **FASE 3: TABELLA RIEPILOGATIVA**
 Genera la tabella riassuntiva dei costi.
@@ -192,12 +201,12 @@ Genera la tabella riassuntiva dei costi.
 Copia e incolla ESATTAMENTE questo testo alla fine, non cambiare una virgola:
 
 ### ℹ️ Informazioni Utili
-* 💆🏽‍♂️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
-* 🏛️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
-* 👨🏻‍🏫 **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
-* 💰 **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
-* ☔ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
-* 📷 **Chiedici anche** servizio video/foto e gadget.
+* ✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+* ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+* ✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+* ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+* ✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+* ✔️ **Chiedici anche** servizio video/foto e gadget.
 
 Se l'utente scrive "Reset", cancella la memoria.
 """
@@ -257,7 +266,3 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 response = chat.send_message(prompt)
                 
                 st.markdown(response.text)
-                st.session_state.messages.append({"role": "model", "content": response.text})
-                
-            except Exception as e:
-                st.error(f"Errore: {e}")
