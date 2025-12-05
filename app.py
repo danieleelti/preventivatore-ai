@@ -7,7 +7,7 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (TORNA A CALIBRI 12PX) ---
+# --- CSS PERSONALIZZATO (CALIBRI 12PX) ---
 st.markdown("""
 <style>
     /* Forza sfondo bianco per i messaggi */
@@ -121,6 +121,7 @@ location_instructions_block = ""
 if locations_module and location_database:
     loc_db_string = database_to_string(location_database)
     if loc_db_string:
+        # Recupera le istruzioni pulite dal modulo aggiornato
         location_instructions_block = locations_module.get_location_instructions(loc_db_string)
 
 # --- 4. CONFIGURAZIONE API E PASSWORD ---
@@ -150,10 +151,11 @@ Rispondi in Italiano.
 1.  **NATURALITÀ:** Non citare le istruzioni o regole interne.
 2.  **QUALIFICAZIONE:** Se l'utente fornisce input vaghi, chiedi info su Durata, Mood e Obiettivo prima di proporre i format.
 
-### 🎨 REGOLE VISUALI
-1.  **ICONE FORMAT:** Usa un'icona tematica SOLO nel titolo dei format.
-2.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format.
-3.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
+### 🎨 REGOLE VISUALI (MASSIMA PULIZIA)
+1.  **ICONE FORMAT:** Inserisci **UNA SOLA EMOJI** a tema esclusivamente nel TITOLO del format (es. ### 🍳 Cooking).
+2.  **NESSUN ALTRA EMOJI:** È severamente vietato usare emoji nelle descrizioni, nei punti elenco o altrove. Il testo deve essere pulito.
+3.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format per dare respiro.
+4.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO RIGOROSO)
 **PASSO 1: VARIABILI** (PAX, P_BASE, METODO)
@@ -178,21 +180,22 @@ Segui rigorosamente questo ordine:
 **FASE 0: CHECK INFORMAZIONI**
 Se mancano info essenziali, chiedile. Se le hai, procedi.
 
-**FASE 1: I FORMAT (Priorità Alta)**
-Elenca i format (Icona Titolo + Descrizione discorsiva breve).
+**FASE 1: LA REGOLA DEL 12 (TASSATIVO)**
+Salvo diversa richiesta numerica dell'utente, proponi **SEMPRE 12 FORMAT** divisi in queste 4 categorie (usa dei piccoli sottotitoli in grassetto senza emoji):
+1.  **I BEST SELLER** (Scegli i 4 format più classici, sicuri e venduti)
+2.  **LE NOVITÀ** (Scegli 4 format originali, tecnologici o recenti)
+3.  **VIBE & RELAX** (Scegli 2 format di atmosfera, cena o relax)
+4.  **SOCIAL** (Scegli 2 format creativi, di interazione o CSR)
+
+Struttura OBBLIGATORIA per ogni singolo format:
+### [Emoji Tematica] [Nome Format]
+[Scrivi 2-3 righe di testo discorsivo spiegando **PERCHÉ** consigliamo questo format specificamente per questo evento/mood. Non fare descrizioni generiche. Niente emoji qui.]
+(Due invio vuoti)
 
 **FASE 2: SUGGERIMENTO LOCATION (Solo se richiesto)**
 *SE E SOLO SE* richiesto dall'utente:
 1.  Titolo: **## Location**
-2.  Elenca le location applicando una **SANITIZZAZIONE ESTREMA**.
-
-    ⛔ **DIVIETI TASSATIVI PER LE LOCATION:**
-    * **NO EMOJI:** È vietato usare 📍, 🏨, ⭐ o qualsiasi altra icona nel testo delle location.
-    * **NO RANKING:** Se nel database vedi "Ranking: 1", "Voto: 5", "Classifica", o numeri simili, **CANCELLALI**. Non devono mai apparire nel testo finale.
-    * **SOLO TESTO:** L'output deve sembrare scritto a mano, senza "sporcizia" da database.
-
-    ✅ **FORMATO OBBLIGATORIO:**
-    * **Nome Location (Città):** [Descrizione pulita e motivazione]. Spazi: [Indoor/Outdoor].
+2.  Elenca le location seguendo RIGOROSAMENTE le istruzioni fornite nel Modulo Location (NO EMOJI, NO RANKING, SOLO TESTO PULITO).
 
 **FASE 3: TABELLA RIEPILOGATIVA**
 | Format | Prezzo Totale (+IVA) | Presentazione |
@@ -223,7 +226,7 @@ FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n#
 # --- 6. AVVIO AI ---
 genai.configure(api_key=api_key)
 
-# Modello impostato su GEMINI 3 PRO PREVIEW come richiesto TASSATIVAMENTE
+# Modello impostato su GEMINI 3 PRO PREVIEW (TASSATIVO)
 model = genai.GenerativeModel(
   model_name="gemini-3-pro-preview", 
   generation_config={"temperature": 0.0},
