@@ -229,5 +229,22 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
             except Exception as e:
                 st.error(f"Errore: {e}")
 
+# test debug
+import os
+
+print("--- DIAGNOSTICA FILE ---")
+cartella_corrente = os.getcwd()
+print(f"Il bot sta lavorando in questa cartella: {cartella_corrente}")
+
+print("Ecco tutti i file che il bot riesce a vedere qui:")
+files = os.listdir(cartella_corrente)
+for f in files:
+    print(f" - {f}")
+    
+if "MasterTb.csv" in files:
+    print("\n✅ VEDO 'MasterTb.csv'! Il problema è altrove.")
+else:
+    print("\n❌ NON VEDO 'MasterTb.csv'. Controlla se il nome è scritto diverso nella lista sopra.")
+print("------------------------")
 
 
