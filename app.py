@@ -7,52 +7,79 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (FONT, COLORI, DIMENSIONI) ---
+# --- CSS PERSONALIZZATO (OTTIMIZZATO PER COPIA-INCOLLA EMAIL) ---
 st.markdown("""
 <style>
-    /* Importiamo un font simile a Calibri se non presente */
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
 
-    /* Regole per tutto il testo dentro la chat */
     div[data-testid="stChatMessage"] {
-        background-color: #ffffff !important; /* Sfondo bianco per leggere meglio il nero */
+        background-color: #ffffff !important; 
     }
     
-    /* TESTO NORMALE: Calibri (o simile), 14px (~10pt), NERO */
+    /* TESTO: Margini ampi per evitare l'effetto "muro di testo" nelle mail */
     div[data-testid="stChatMessage"] p, 
-    div[data-testid="stChatMessage"] li, 
-    div[data-testid="stChatMessage"] td {
+    div[data-testid="stChatMessage"] li {
         font-family: 'Calibri', 'Open Sans', sans-serif !important;
         font-size: 14px !important;
-        color: #000000 !important; /* Nero assoluto */
-        line-height: 1.4 !important;
+        color: #000000 !important;
+        line-height: 1.6 !important;
+        margin-bottom: 20px !important; /* FORZA SPAZIO SOTTO OGNI PARAGRAFO */
     }
 
-    /* TITOLI (H3 usato per i nomi format): 16px (~12pt), BOLD, NERO */
+    /* TITOLI FORMAT */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Open Sans', sans-serif !important;
         font-size: 16px !important;
         font-weight: bold !important;
         color: #000000 !important;
-        margin-top: 10px !important;
-        margin-bottom: 5px !important;
+        margin-top: 25px !important; /* Più aria sopra */
+        margin-bottom: 10px !important;
     }
     
-    /* TITOLI FORTI (Bold nel testo) */
     div[data-testid="stChatMessage"] strong {
         font-weight: bold !important;
         color: #000000 !important;
     }
 
-    /* TABELLE: Nere e compatte */
+    /* TABELLE: Larghezza 100% e spaziature comode */
     div[data-testid="stChatMessage"] table {
         color: #000000 !important;
         font-size: 14px !important;
+        width: 100% !important;
+        display: table !important;
+        border-collapse: collapse !important;
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
     }
+    
     div[data-testid="stChatMessage"] th {
         background-color: #f0f0f0 !important;
         color: #000000 !important;
         font-weight: bold !important;
+        padding: 12px !important;
+        text-align: left !important;
+        border-bottom: 2px solid #000 !important;
+    }
+    
+    div[data-testid="stChatMessage"] td {
+        padding: 10px 12px !important;
+        border-bottom: 1px solid #ccc !important;
+        vertical-align: middle !important;
+    }
+    
+    /* LINK */
+    div[data-testid="stChatMessage"] a {
+        color: #0066cc !important;
+        text-decoration: underline !important; /* Sottolineato aiuta nelle mail */
+        font-weight: bold !important;
+    }
+    
+    /* LINEA DI SEPARAZIONE (HR) */
+    div[data-testid="stChatMessage"] hr {
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
+        border: 0;
+        border-top: 1px solid #ddd !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -94,14 +121,11 @@ master_database = carica_database('mastertb.csv')
 faq_database = carica_database('faq.csv')
 location_database = carica_database('location.csv')
 
-# Controlli
 if master_database is None:
     st.error("⚠️ ERRORE CRITICO: Non trovo 'mastertb.csv'. Verifica che il file su GitHub sia scritto TUTTO MINUSCOLO.")
     st.stop()
 
 csv_data_string = database_to_string(master_database)
-
-# Gestione opzionale
 if faq_database is None: faq_database = [] 
 if location_database is None: location_database = []
 
@@ -123,17 +147,15 @@ if not st.session_state.authenticated:
             st.error("Password errata")
     st.stop()
 
-# --- 4. IL CERVELLO (PROMPT AGGIORNATO PER FORMATTAZIONE) ---
+# --- 4. IL CERVELLO (PROMPT OTTIMIZZATO MAIL) ---
 BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
 Rispondi in Italiano.
 
-### 🎨 REGOLE VISUALI (FONDAMENTALI)
-1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente al contenuto (es. 👨‍🍳 per cucina, 🕵️ per crime, 🎨 per arte, 🧱 per costruzioni, 🏃 per sport). Non usare icone generiche come 🏆 ovunque.
-2.  **PULIZIA:** Non usare elenchi puntati o icone nel corpo della descrizione. Solo testo scorrevole.
-3.  **STRUTTURA:**
-    * Descrizione Format (Titolo + Motivazione)
-    * **TABELLA FINALE RIEPILOGATIVA** (Obbligatoria)
+### 🎨 REGOLE VISUALI (FONDAMENTALI PER EMAIL)
+1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente (es. 👨‍🍳, 🕵️, 🎨, 🧱, 🏃).
+2.  **PULIZIA:** Non usare elenchi puntati. Solo paragrafi scorrevoli.
+3.  **SEPARAZIONE:** Tra la descrizione di un format e il successivo, inserisci SEMPRE una riga divisoria orizzontale usando il markdown `---`. Questo è fondamentale per l'impaginazione via email.
 
 ### 🔢 MOTORE DI CALCOLO PREVENTIVI
 Quando richiesto, calcola il prezzo usando i dati del Database.
@@ -169,15 +191,20 @@ Devi scrivere SOLO:
 *Perché:* [Motivazione sintetica di 2 righe].
 *Note:* [Solo se ci sono vincoli critici].
 
+---
+(Inserisci qui il separatore `---` dopo ogni format)
+
 ⛔ **NON SCRIVERE IL PREZZO O IL LINK QUI SOTTO AL FORMAT.**
 
 **FASE 2: TABELLA RIEPILOGATIVA (Obbligatoria alla fine)**
-Dopo aver elencato i format, crea una tabella Markdown con 3 colonne:
+Dopo i format, crea una tabella Markdown con 3 colonne.
+**IMPORTANTE:** Nella terza colonna il testo del link DEVE essere "Scarica [Nome Format] in pdf".
+
+*Esempio Struttura Tabella:*
 | Format | Prezzo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica PDF](link) |
-| 🕵️ CSI Crime | € 1.800,00 | [Scarica PDF](link) |
-...e così via per tutti i format proposti.
+| 👨‍🍳 Cooking Team | € 2.400,00 | [Scarica Cooking Team in pdf](link) |
+| 🕵️ CSI Crime | € 1.800,00 | [Scarica CSI Crime in pdf](link) |
 
 Se l'utente scrive "Reset", cancella la memoria.
 """
@@ -187,7 +214,6 @@ FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE DATI]\n\n{csv_d
 # --- 5. CONFIGURAZIONE AI ---
 genai.configure(api_key=api_key)
 
-# Utilizziamo Gemini 3 Pro Preview
 model = genai.GenerativeModel(
   model_name="gemini-3-pro-preview", 
   generation_config={"temperature": 0.0},
