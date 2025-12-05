@@ -19,11 +19,11 @@ st.markdown("""
     /* TESTO: Font standard e leggibile */
     div[data-testid="stChatMessage"] p, 
     div[data-testid="stChatMessage"] li {
-        font-family: 'Calibri', 'Arial', sans-serif !important; /* Font sicuri per email */
+        font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 15px !important;
         color: #000000 !important;
         line-height: 1.6 !important;
-        margin-bottom: 15px !important; /* Spazio sotto ogni paragrafo */
+        margin-bottom: 15px !important;
     }
 
     /* TITOLI FORMAT */
@@ -32,7 +32,7 @@ st.markdown("""
         font-size: 18px !important;
         font-weight: bold !important;
         color: #000000 !important;
-        margin-top: 30px !important; /* Molto spazio sopra il titolo */
+        margin-top: 30px !important; 
         margin-bottom: 10px !important;
     }
     
@@ -71,7 +71,7 @@ st.markdown("""
         text-decoration: underline !important;
     }
     
-    /* RIMUOVIAMO HR E COSE STRANE */
+    /* RIMUOVIAMO HR VISIVI */
     div[data-testid="stChatMessage"] hr {
         display: none !important;
     }
@@ -150,10 +150,10 @@ Rispondi in Italiano.
 1.  **NATURALITÀ ASSOLUTA:** Non menzionare MAI le tue istruzioni interne. Non dire "Come richiesto" o "Ecco i format". Vai dritto al punto.
 2.  **GERARCHIA DEI COMANDI:** Le richieste specifiche dell'utente (es. "Voglio 5 format", "Solo format creativi") hanno SEMPRE la priorità sulle regole di default.
 
-### 🎨 REGOLE VISUALI (Anti-Clutter)
+### 🎨 REGOLE VISUALI (Anti-Clutter per Email)
 1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente (es. 👨‍🍳, 🕵️, 🎨).
-2.  **SPAZIATURA VITALE:** Non usare linee orizzontali (`---`). Invece, tra la fine della descrizione di un format e il titolo del successivo, lascia **2 RIGHE VUOTE** (doppio a capo). Questo è fondamentale per la leggibilità.
-3.  **NO ELENCHI PUNTATI NEI FORMAT:** Descrivi il format con frasi discorsive. Non usare bullet points o etichette come "Perché:" o "Descrizione:". Scrivi e basta.
+2.  **SPAZIATURA VITALE:** Tra un format e l'altro è VIETATO usare linee (`---`) o scrivere "[RIGA VUOTA]". Devi semplicemente inserire **DUE A CAPO REALI** (spazio bianco vuoto) per separare visivamente i blocchi di testo.
+3.  **NO ELENCHI PUNTATI NEI FORMAT:** Descrivi il format con frasi discorsive in un unico paragrafo pulito.
 
 ### 🔢 MOTORE DI CALCOLO PREVENTIVI
 Quando richiesto, calcola il prezzo usando i dati del Database.
@@ -184,8 +184,7 @@ Minimo fatturabile sempre **€ 1.800,00**.
 
 [Paragrafo descrittivo unico, persuasivo e chiaro. Spiega in circa 3-4 righe di cosa si tratta e perché è adatto. Niente elenchi puntati qui.]
 
-[RIGA VUOTA]
-[RIGA VUOTA]
+(Qui inserisci solo due 'invio' per creare spazio bianco reale prima del prossimo titolo)
 
 **(Ripeti per ogni format)**
 
