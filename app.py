@@ -7,7 +7,7 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (OTTIMIZZATO PER COPIA-INCOLLA EMAIL) ---
+# --- CSS PERSONALIZZATO (OTTIMIZZATO PER EMAIL E VISIBILITÀ) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
@@ -16,14 +16,14 @@ st.markdown("""
         background-color: #ffffff !important; 
     }
     
-    /* TESTO: Margini ampi per evitare l'effetto "muro di testo" nelle mail */
+    /* TESTO: Margini ampi per email e leggibilità */
     div[data-testid="stChatMessage"] p, 
     div[data-testid="stChatMessage"] li {
         font-family: 'Calibri', 'Open Sans', sans-serif !important;
         font-size: 14px !important;
         color: #000000 !important;
         line-height: 1.6 !important;
-        margin-bottom: 20px !important; /* FORZA SPAZIO SOTTO OGNI PARAGRAFO */
+        margin-bottom: 20px !important;
     }
 
     /* TITOLI FORMAT */
@@ -32,7 +32,7 @@ st.markdown("""
         font-size: 16px !important;
         font-weight: bold !important;
         color: #000000 !important;
-        margin-top: 25px !important; /* Più aria sopra */
+        margin-top: 25px !important;
         margin-bottom: 10px !important;
     }
     
@@ -41,7 +41,7 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* TABELLE: Larghezza 100% e spaziature comode */
+    /* TABELLE: Larghezza 100% */
     div[data-testid="stChatMessage"] table {
         color: #000000 !important;
         font-size: 14px !important;
@@ -70,11 +70,11 @@ st.markdown("""
     /* LINK */
     div[data-testid="stChatMessage"] a {
         color: #0066cc !important;
-        text-decoration: underline !important; /* Sottolineato aiuta nelle mail */
+        text-decoration: underline !important;
         font-weight: bold !important;
     }
     
-    /* LINEA DI SEPARAZIONE (HR) */
+    /* LINEA DI SEPARAZIONE */
     div[data-testid="stChatMessage"] hr {
         margin-top: 20px !important;
         margin-bottom: 20px !important;
@@ -147,7 +147,7 @@ if not st.session_state.authenticated:
             st.error("Password errata")
     st.stop()
 
-# --- 4. IL CERVELLO (PROMPT OTTIMIZZATO MAIL) ---
+# --- 4. IL CERVELLO (PROMPT CON ARROTONDAMENTO INTELLIGENTE) ---
 BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
 Rispondi in Italiano.
@@ -155,28 +155,26 @@ Rispondi in Italiano.
 ### 🎨 REGOLE VISUALI (FONDAMENTALI PER EMAIL)
 1.  **ICONE TEMATICHE:** Nel titolo di ogni format, usa UN'ICONA pertinente (es. 👨‍🍳, 🕵️, 🎨, 🧱, 🏃).
 2.  **PULIZIA:** Non usare elenchi puntati. Solo paragrafi scorrevoli.
-3.  **SEPARAZIONE:** Tra la descrizione di un format e il successivo, inserisci SEMPRE una riga divisoria orizzontale usando il markdown `---`. Questo è fondamentale per l'impaginazione via email.
+3.  **SEPARAZIONE:** Tra la descrizione di un format e il successivo, inserisci SEMPRE una riga divisoria orizzontale usando il markdown `---`.
 
-### 🔢 MOTORE DI CALCOLO PREVENTIVI
+### 🔢 MOTORE DI CALCOLO PREVENTIVI (Update: Arrotondamento)
 Quando richiesto, calcola il prezzo usando i dati del Database.
 
-**PASSO 1: Trova i dati**
-Cerca il format e prendi `P_BASE` e `METODO`.
-
-**PASSO 2: Calcola il Totale**
+**PASSO 1: Calcolo Matematico**
 🔴 **SE METODO = "Standard":**
-`TOTALE = P_BASE * (Moltiplicatore Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * NUMERO PARTECIPANTI`
-
-* **M_PAX:** <5 (3.20) | 5-10 (1.60) | 11-20 (1.05) | 21-30 (0.95) | 31-60 (0.90) | 61-90 (0.90) | 91-150 (0.85) | 151-250 (0.70) | 251-350 (0.63) | 351-500 (0.55) | 501-700 (0.50) | >900 (0.30)
-* **M_DURATA:** ≤1h (1.05) | 1-2h (1.07) | 2-4h (1.10) | >4h (1.15)
-* **M_LINGUA:** Ita (1.05) | Eng (1.10)
-* **M_LOCATION:** Mi (1.00) | Rm (0.95) | Centro (1.05) | Nord/Sud (1.15) | Isole (1.30)
-* **M_STAGIONE:** Mag-Ott (1.10) | Nov-Apr (1.02)
-
+`TOTALE_GREZZO = P_BASE * (Moltiplicatore Pax * M_Durata * M_Lingua * M_Location * M_Stagione) * NUMERO PARTECIPANTI`
 🔵 **SE METODO = "Flat":**
-`1800 + ((Pax - 20) * 4.80)` + Eventuale Costo Fisso. Applica poi M_Location e M_Lingua.
+`TOTALE_GREZZO = 1800 + ((Pax - 20) * 4.80)` + Eventuale Costo Fisso. Applica poi M_Location e M_Lingua.
 
-**MINIMUM SPENDING:** Se Totale < 1.800€ -> Arrotonda a 1.800€.
+**PASSO 2: ARROTONDAMENTO INTELLIGENTE (Regola del 39)**
+Prendi il `TOTALE_GREZZO` calcolato e guarda le ultime due cifre (decina e unità):
+* **Fino a 39€ (es. XX00 - XX39):** Arrotonda per DIFETTO al centinaio inferiore.
+    * *Esempio: 2.235,00€ -> diventa 2.200,00€*
+* **Da 40€ in poi (es. XX40 - XX99):** Arrotonda per ECCESSO al centinaio superiore.
+    * *Esempio: 3.450,00€ -> diventa 3.500,00€*
+
+**PASSO 3: MINIMUM SPENDING**
+Se il Totale Arrotondato è inferiore a **€ 1.800,00**, il prezzo finale è **€ 1.800,00**.
 
 ---
 
