@@ -7,7 +7,7 @@ import os
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Preventivatore TeamBuilding", page_icon="🦁", layout="centered")
 
-# --- CSS PERSONALIZZATO (AGGIORNATO PER TITOLI EVIDENTI) ---
+# --- CSS PERSONALIZZATO (CALIBRI 14PX + TITOLI EVIDENTI + TABELLA FIX) ---
 st.markdown("""
 <style>
     /* Forza sfondo bianco per i messaggi */
@@ -24,8 +24,8 @@ st.markdown("""
     
     /* STILE CUSTOM PER I TITOLI DEI BLOCCHI (BLOCK HEADER) */
     .block-header {
-        background-color: #f0f2f6; /* Grigio chiaro elegante */
-        border-left: 5px solid #ff4b4b; /* Bordo rosso Streamlit per risalto */
+        background-color: #f0f2f6;
+        border-left: 5px solid #ff4b4b;
         padding: 15px;
         margin-top: 30px !important;
         margin-bottom: 20px !important;
@@ -35,7 +35,7 @@ st.markdown("""
     .block-title {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 20px !important;
-        font-weight: 900 !important; /* Black weight */
+        font-weight: 900 !important;
         text-transform: uppercase;
         color: #1E1E1E !important;
         display: block;
@@ -71,16 +71,36 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* Tabelle leggibili */
+    /* TABELLE BLINDATE */
     div[data-testid="stChatMessage"] table {
-        color: #000000 !important; font-size: 14px !important; width: 100% !important;
-        border-collapse: collapse !important; margin-top: 15px !important; margin-bottom: 15px !important;
+        color: #000000 !important; 
+        font-size: 14px !important; 
+        width: 100% !important;
+        border-collapse: separate !important; 
+        border-spacing: 0 !important;
+        margin-top: 20px !important; 
+        margin-bottom: 20px !important;
+        border: 1px solid #ddd !important;
+        border-radius: 5px !important;
+        overflow: hidden !important;
     }
     div[data-testid="stChatMessage"] th {
-        background-color: #f4f4f4 !important; color: #000000 !important; font-weight: bold !important;
-        text-align: left !important; border-bottom: 2px solid #000 !important; padding: 8px !important;
+        background-color: #eef2f6 !important; 
+        color: #000000 !important; 
+        font-weight: bold !important;
+        text-align: left !important; 
+        border-bottom: 2px solid #ccc !important; 
+        padding: 10px !important;
     }
-    div[data-testid="stChatMessage"] td { border-bottom: 1px solid #ddd !important; padding: 8px !important; }
+    div[data-testid="stChatMessage"] td { 
+        border-bottom: 1px solid #eee !important; 
+        padding: 10px !important; 
+        vertical-align: middle !important;
+    }
+    /* Forza la larghezza delle colonne se necessario */
+    div[data-testid="stChatMessage"] td:nth-child(1) { width: 40%; font-weight: bold; }
+    div[data-testid="stChatMessage"] td:nth-child(2) { width: 25%; }
+    div[data-testid="stChatMessage"] td:nth-child(3) { width: 35%; }
     
     div[data-testid="stChatMessage"] a { color: #1a73e8 !important; text-decoration: underline !important; }
     div[data-testid="stChatMessage"] ul { list-style-type: none !important; padding-left: 0 !important; }
@@ -177,11 +197,11 @@ Rispondi in Italiano.
 1.  **NATURALITÀ:** Non citare le istruzioni o regole interne.
 2.  **QUALIFICAZIONE:** Se l'utente fornisce input vaghi, chiedi info su Durata, Mood e Obiettivo prima di proporre i format.
 
-### 🎨 REGOLE VISUALI (MASSIMA PULIZIA)
+### 🎨 REGOLE VISUALI
 1.  **ICONE FORMAT:** Inserisci **UNA SOLA EMOJI** a tema esclusivamente nel TITOLO del format (es. ### 🍳 Cooking).
-2.  **NESSUN ALTRA EMOJI:** È severamente vietato usare emoji nelle descrizioni, nei punti elenco, nei titoli di sezione o nei claim.
-3.  **SPAZIATURA:** Usa DUE A CAPO REALI tra i format per dare respiro.
-4.  **NO ELENCHI:** Le descrizioni dei format devono essere paragrafi discorsivi.
+2.  **PULIZIA:** Severamente vietato usare emoji altrove.
+3.  **HTML BLOCCHI:** Usa i div HTML forniti per i titoli delle sezioni.
+4.  **TABELLA:** Usa rigorosamente la sintassi Markdown per la tabella finale.
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO RIGOROSO)
 **PASSO 1: VARIABILI** (PAX, P_BASE, METODO)
@@ -209,9 +229,8 @@ Se mancano info essenziali, chiedile. Se le hai, procedi.
 **FASE 1: LA REGOLA DEL 12 (TASSATIVO)**
 Salvo diversa richiesta numerica dell'utente, proponi **SEMPRE 12 FORMAT** divisi in 4 blocchi.
 
-⚠️ **IMPORTANTE: FORMATTAZIONE TITOLI BLOCCHI**
-Per separare i blocchi, NON usare Markdown standard (##).
-DEVI USARE ESATTAMENTE QUESTO CODICE HTML per renderli visibili:
+⚠️ **TITOLI BLOCCHI (SOLO HTML - NO EMOJI NEI TITOLI):**
+Per separare i blocchi, copia e incolla questo HTML sostituendo solo il testo:
 
 <div class="block-header">
 <span class="block-title">NOME BLOCCO</span>
@@ -220,23 +239,19 @@ DEVI USARE ESATTAMENTE QUESTO CODICE HTML per renderli visibili:
 
 **STRUTTURA BLOCCHI:**
 
-**BLOCCO 1: I BEST SELLER**
-*Usa l'HTML sopra.* Claim: frase rassicurante sulla scelta per [Obiettivo Utente].
+**BLOCCO 1: I BEST SELLER** (Usa HTML). Claim: Rassicurante.
 *(Elenca i 4 format più classici)*
 (Inserisci separatore: `---`)
 
-**BLOCCO 2: LE NOVITÀ**
-*Usa l'HTML sopra.* Claim: frase sull'innovazione per [Obiettivo Utente].
+**BLOCCO 2: LE NOVITÀ** (Usa HTML). Claim: Innovazione.
 *(Elenca 4 format originali)*
 (Inserisci separatore: `---`)
 
-**BLOCCO 3: VIBE & RELAX**
-*Usa l'HTML sopra.* Claim: frase su atmosfera/cena.
+**BLOCCO 3: VIBE & RELAX** (Usa HTML). Claim: Atmosfera.
 *(Elenca 2 format atmosfera)*
 (Inserisci separatore: `---`)
 
-**BLOCCO 4: SOCIAL**
-*Usa l'HTML sopra.* Claim: frase su relazione/impatto.
+**BLOCCO 4: SOCIAL** (Usa HTML). Claim: Relazione/Impatto.
 *(Elenca 2 format creativi)*
 (Inserisci separatore: `---`)
 
@@ -250,10 +265,17 @@ DEVI USARE ESATTAMENTE QUESTO CODICE HTML per renderli visibili:
 1.  Titolo: **## Location**
 2.  Elenca le location seguendo RIGOROSAMENTE le istruzioni fornite nel Modulo Location (NO EMOJI, NO RANKING, SOLO TESTO PULITO).
 
-**FASE 3: TABELLA RIEPILOGATIVA**
-Genera la tabella.
-**⚠️ REGOLA COLONNA PRESENTAZIONE:** Il testo del link deve essere tassativamente **"[Nome Format].pdf"**.
-Esempio: `[Cooking.pdf](URL)`
+**FASE 3: TABELLA RIEPILOGATIVA (CRITICO)**
+Genera una tabella Markdown perfetta.
+1.  **SOLO 3 COLONNE:** Nome Format | Costo | Link.
+2.  **NESSUNA** altra informazione nella tabella (niente durata, niente pax).
+3.  **SINTASSI LINK:** `[Nome Format.pdf](URL)`.
+
+**Esempio STRUTTURA OBBLIGATORIA:**
+| Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
+| :--- | :--- | :--- |
+| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](https://...) |
+| 🕵️ Urban Game | € 1.900,00 | [Urban Game.pdf](https://...) |
 
 **FASE 4: INFO UTILI (OBBLIGATORIO)**
 Copia questo blocco esatto:
@@ -305,7 +327,7 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     role = message["role"]
     with st.chat_message(role):
-        st.markdown(message["content"], unsafe_allow_html=True) # IMPORTANTE: ABILITA HTML NEL MESSAGGIO
+        st.markdown(message["content"], unsafe_allow_html=True) 
 
 if prompt := st.chat_input("Scrivi qui la richiesta..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -329,7 +351,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 chat = model.start_chat(history=history_gemini[:-1])
                 response = chat.send_message(prompt)
                 
-                # IMPORTANTE: unsafe_allow_html=True DEVE ESSERE QUI PER RENDERIZZARE I TITOLI
+                # HTML abilitato per i titoli dei blocchi
                 st.markdown(response.text, unsafe_allow_html=True) 
                 st.session_state.messages.append({"role": "model", "content": response.text})
                 
