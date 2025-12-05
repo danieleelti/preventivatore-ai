@@ -191,10 +191,10 @@ safety_settings = {
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-3-pro-preview",
-    generation_config={"temperature": 0.0}, 
-    system_instruction=full_prompt_with_data, # <-- Qui passiamo l'unica mega-variabile
-    safety_settings=safety_settings,
+  model_name="gemini-3-pro-preview", 
+  generation_config={"temperature": 0.0},
+  system_instruction=FULL_SYSTEM_PROMPT, # <--- CORRETTO: Usiamo la variabile che esiste davvero!
+  safety_settings=safety_settings,
 )
 
 # --- 6. INTERFACCIA CHAT ---
@@ -243,3 +243,4 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
             except Exception as e:
                 st.error(f"Errore: {e}")
+
