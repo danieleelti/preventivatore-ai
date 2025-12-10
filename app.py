@@ -6,7 +6,7 @@ import csv
 import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import save  # <--- NUOVO MODULO IMPORTATO
+import save  # Modulo di salvataggio
 
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="centered")
@@ -77,7 +77,7 @@ st.markdown("""
     div[data-testid="stChatMessage"] a { color: #1a73e8 !important; text-decoration: underline !important; }
     div[data-testid="stChatMessage"] ul { list-style-type: none !important; padding-left: 0 !important; }
     
-    /* Stile bottone attivazione location */
+    /* Stile bottone attivazione location e salvataggio */
     .stButton button {
         background-color: #ff4b4b !important;
         color: white !important;
@@ -461,10 +461,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
 
                     st.session_state.messages.append({"role": "model", "content": response_text})
                     
-                    # --- PULSANTE SALVATAGGIO (DENTRO MESSAGGIO AI) ---
-                    # Per essere sicuri che salvi QUESTO messaggio, lo mettiamo qui
-                    # Nota: Per UX migliore, lo mettiamo fuori dal blocco in basso
-                    
                 except Exception as e:
                     err_msg = str(e)
                     if "rate_limit_exceeded" in err_msg.lower() or "413" in err_msg:
@@ -472,8 +468,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     else:
                         st.error(f"Errore tecnico con {provider}: {e}")
 
-# --- PULSANTE DI SALVATAGGIO E COPIA (FUORI DAL CICLO CHAT) ---
-# Se c'è un ultimo messaggio dell'assistente, mostriamo le opzioni
+# --- PULSANTE DI SALVATAGGIO (FUORI DAL CICLO CHAT) ---
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "model":
     last_response = st.session_state.messages[-1]["content"]
     
@@ -488,5 +483,7 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "model
                 st.error("Errore nel salvataggio.")
     
     with c2:
-        st.info("👇 **Copia il testo qui sotto:**")
-        st.code(last_response, language="markdown")
+        # USARE EXPANDER PER NASCONDERE IL RAW TEXT
+        with st.expander("📋 CLICCA QUI PER COPIARE IL TESTO"):
+            st.info("Clicca l'icona 📄 nell'angolo in alto a destra del blocco qui sotto.")
+            st.code(last_response, language="markdown")
