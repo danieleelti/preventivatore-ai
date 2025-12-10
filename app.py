@@ -158,12 +158,10 @@ if not st.session_state.authenticated:
         pwd = st.text_input("Inserisci Password Staff", type="password")
         
         if st.button("Accedi"):
-            # Recupera le password dai SECRETS invece che dal codice
             users_db = st.secrets.get("passwords", {})
-            
             if pwd in users_db:
                 st.session_state.authenticated = True
-                st.session_state.username = users_db[pwd] # Salvo il nome (es. Benedetta)
+                st.session_state.username = users_db[pwd]
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -236,11 +234,44 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 1.  **ICONE:** Una emoji SOLO nel titolo format.
 2.  **HTML:** Usa div HTML per i titoli sezioni.
 
-### 🔢 CALCOLO PREVENTIVI
-* Usa colonne DB per P_BASE.
-* Applica moltiplicatori (M_PAX, M_DURATA, M_LINGUA, M_LOCATION, M_STAGIONE).
-* Formula: `P_BASE * M_PAX * ... * PAX`
-* Arrotonda e Min Spending 1800+IVA.
+### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO)
+Usa rigorosamente questi passaggi. NON inventare prezzi.
+
+**1. IDENTIFICA I MOLTIPLICATORI:**
+* **M_PAX (Numero Partecipanti):**
+    * < 5 pax: x3.20
+    * 5-10 pax: x1.60
+    * 11-20 pax: x1.05
+    * 21-30 pax: x0.95
+    * 31-60 pax: x0.90
+    * 61-90 pax: x0.90
+    * 91-150 pax: x0.85
+    * 151-250 pax: x0.70
+    * > 250 pax: x0.60
+* **M_STAGIONE:**
+    * Maggio, Giugno, Luglio, Settembre, Ottobre, Dicembre: x1.10
+    * Gennaio, Febbraio, Marzo, Aprile, Agosto, Novembre: x1.02
+* **M_LOCATION:**
+    * Milano (città): x1.00
+    * Roma (città): x0.95
+    * Centro Italia: x1.05
+    * Nord/Sud Italia (Fuori MI/RM): x1.15
+    * Isole: x1.30
+* **M_DURATA:**
+    * Fino a 2h: x1.00
+    * Mezza giornata (2-4h): x1.10
+    * Giornata intera (>4h): x1.20
+
+**2. APPLICA LA FORMULA BASE:**
+`PREZZO_GREZZO = (Prezzo_Listino_CSV * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * Numero_Pax`
+
+**3. REGOLA MINIMUM SPENDING:**
+Se `PREZZO_GREZZO` è inferiore a € 1.800,00 -> Il prezzo diventa **€ 1.800,00**.
+
+**4. REGOLA ARROTONDAMENTO (CRITICO):**
+Devi arrotondare il totale usando questa logica matematica:
+`PREZZO_FINALE = ARROTONDA((PREZZO_GREZZO + 60) / 100) * 100`
+*(In pratica: se le ultime due cifre sono 00-39 arrotonda per difetto al 100, se sono 40-99 arrotonda per eccesso al 100).*
 
 ---
 ### 🚦 FLUSSO DI LAVORO
@@ -365,7 +396,6 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "model
     c1, c2 = st.columns([1, 2])
     with c1:
         if st.button("💾 SALVA SU GOOGLE SHEET", use_container_width=True):
-            # Passiamo l'utente corretto
             if save.salva_preventivo(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
                 st.success(f"✅ Preventivo per {cliente_input} salvato!")
             else:
