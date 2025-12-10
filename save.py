@@ -14,7 +14,6 @@ def get_db_connection():
         
         if "gcp_service_account" in st.secrets:
             creds_dict = dict(st.secrets["gcp_service_account"])
-            # Fix per i caratteri di nuova riga
             if "\\n" in creds_dict["private_key"]:
                 creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
             
@@ -28,7 +27,7 @@ def get_db_connection():
         st.error(f"❌ Errore connessione DB: {e}")
         return None
 
-def salva_preventivo(cliente, pax, data_evento, citta, contenuto):
+def salva_preventivo(cliente, utente, pax, data_evento, citta, contenuto):
     """Salva una riga nel foglio PreventiviInviatiAi."""
     client = get_db_connection()
     if not client:
@@ -44,9 +43,10 @@ def salva_preventivo(cliente, pax, data_evento, citta, contenuto):
         ora_oggi = now.strftime("%H:%M:%S")
 
         # Preparazione Riga
-        # Colonne: Nome Cliente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
+        # Colonne: Nome Cliente | Utente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
         row = [
             cliente,
+            utente,      # <--- NUOVA COLONNA
             data_oggi,
             ora_oggi,
             pax,
