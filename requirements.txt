@@ -1,5 +1,7 @@
 streamlit
 google-generativeai
-pandas
 gspread
 oauth2client
+pytz
+openai
+groq
