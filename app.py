@@ -154,10 +154,6 @@ if not st.session_state.authenticated:
 # --- 4.b CONFIGURAZIONE AI ---
 st.title("🦁 💰 FATTURAGE 💰 🦁")
 
-# Inizializza contatore token totale se non esiste
-if "total_tokens_used" not in st.session_state:
-    st.session_state.total_tokens_used = 0
-
 # Variabile per le istruzioni location (vuota di default)
 location_instructions_block = ""
 
@@ -251,7 +247,6 @@ Proponi ESATTAMENTE 12 FORMAT divisi in 4 blocchi, seguendo questa struttura num
 [Descrizione basata sul DB]
 
 **FASE 2: SUGGERIMENTO LOCATION**
-Segui rigorosamente le istruzioni sottostanti. Se il database è disabilitato, devi comunicarlo.
 {location_instructions_block}
 
 **FASE 3: TABELLA RIEPILOGATIVA (⛔️ TASSATIVA ⛔️)**
@@ -295,19 +290,12 @@ Devi riportare ESATTAMENTE questo blocco, inclusi gli emoji:
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-# NOTA: location_instructions_block è già stato inserito sopra tramite f-string o accodamento
-# Ma per sicurezza lo reiniettiamo nel prompt finale in modo pulito.
+# Se location_instructions_block è vuoto (DB spento), diamo istruzione di SILENZIO ASSOLUTO.
 if not location_instructions_block:
-    # Se il DB è spento, inserisco un blocco "silente" che si attiva SOLO se richiesto
-    location_guardrail = """
-    SE (E SOLO SE) L'UTENTE HA CHIESTO UNA LOCATION:
-    Rispondi: "⚠️ Database Location spento. Per ricevere suggerimenti mirati sulle nostre location partner, attiva la spunta **'Abilita Database Location'** nel menu delle impostazioni in alto ⚙️ e riprova."
-    ALTRIMENTI:
-    Non scrivere nulla su location o database spento.
-    """
-    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_guardrail}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
+    location_guardrail_silent = "ISTRUZIONE PER FASE 2: NON SCRIVERE NULLA. SALTA QUESTA FASE. VAI DIRETTAMENTE ALLA FASE 3."
+    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_guardrail_silent)}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
 else:
-    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
+    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_instructions_block)}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
 
 
 # --- 7. CHAT ---
@@ -328,7 +316,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
 
     if prompt.lower().strip() in ["reset", "nuovo", "cancella", "stop"]:
         st.session_state.messages = []
-        st.session_state.total_tokens_used = 0 # Resetta anche contatore
         st.rerun()
 
     with st.chat_message("assistant"):
@@ -340,7 +327,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
                 response_text = ""
                 token_usage_info = ""
-                current_total_tokens = 0
 
                 # --- GOOGLE GEMINI ---
                 if provider == "Google Gemini":
@@ -365,8 +351,10 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if response.usage_metadata:
-                        current_total_tokens = response.usage_metadata.total_token_count
-                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
+                        in_tok = response.usage_metadata.prompt_token_count
+                        out_tok = response.usage_metadata.candidates_token_count
+                        tot_tok = response.usage_metadata.total_token_count
+                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
 
                 # --- GROQ ---
                 elif provider == "Groq":
@@ -387,8 +375,10 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if resp.usage:
-                        current_total_tokens = resp.usage.total_tokens
-                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
+                        in_tok = resp.usage.prompt_tokens
+                        out_tok = resp.usage.completion_tokens
+                        tot_tok = resp.usage.total_tokens
+                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
 
                 st.markdown(response_text, unsafe_allow_html=True) 
                 
