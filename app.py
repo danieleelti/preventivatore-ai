@@ -303,7 +303,7 @@ Devi riportare ESATTAMENTE questo blocco, inclusi gli emoji:
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-# Se DB Location è spento, istruiamo l'AI a SALTARE la Fase 2 senza commenti.
+# NOTA: Gestione Silenziosa del Guardrail
 if not location_instructions_block:
     location_guardrail_silent = "ISTRUZIONE PER FASE 2: NON SCRIVERE NULLA. SALTA QUESTA FASE. VAI DIRETTAMENTE ALLA FASE 3."
     FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_guardrail_silent)}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
@@ -332,27 +332,26 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
         st.session_state.messages = []
         st.rerun()
 
-# --- LOGICA DI CONTROLLO E GENERAZIONE AI (FUORI DAL BLOCCO PROMPT) ---
-# Controlliamo se l'ultimo messaggio è dell'utente per innescare la risposta o il blocco
-if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-    last_user_msg = st.session_state.messages[-1]["content"]
-    
-    # 1. CONTROLLO KEYWORD LOCATION
+    # --- CONTROLLO KEYWORD LOCATION + LOGICA BOTTONE (FUNZIONE CALLBACK) ---
     keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
-    is_location_request = any(k in last_user_msg.lower() for k in keywords_location)
+    is_location_request = any(k in prompt.lower() for k in keywords_location)
     
-    # 2. SE CHIEDE LOCATION MA IL DB È SPENTO -> STOP E BOTTONE
+    # Se chiede location MA il DB è spento, mostriamo bottone e FERMIAMO l'esecuzione.
     if is_location_request and not st.session_state.enable_locations_state:
         with st.chat_message("assistant"):
             st.warning("⚠️ **Il Database Location è spento per massimizzare la velocità.**")
             st.info("Per includere suggerimenti mirati sulle location partner, attiva il database qui sotto:")
-            if st.button("🟢 ATTIVA DATABASE LOCATION E RISPONDI"):
+            
+            # CALLBACK FUNZIONE per cambiare lo stato PRIMA del rerun
+            def enable_locations_callback():
                 st.session_state.enable_locations_state = True
-                st.rerun()
-            # Interrompiamo l'esecuzione qui. L'AI non risponderà finché non si clicca o si scrive altro.
+            
+            st.button("🟢 ATTIVA DATABASE LOCATION E RISPONDI", on_click=enable_locations_callback)
+            
+            # Stop impedisce all'AI di rispondere finché non si interagisce con il bottone
             st.stop()
 
-    # 3. SE TUTTO OK (O DB GIÀ ACCESO, O NESSUNA LOCATION RICHIESTA) -> GENERA
+    # --- 3. GENERAZIONE RISPOSTA AI ---
     with st.chat_message("assistant"):
         with st.spinner(f"Elaborazione con {provider}..."):
             try:
@@ -381,7 +380,7 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
                             history_gemini.append({"role": "model", "parts": [m["content"]]})
                     
                     chat = model.start_chat(history=history_gemini[:-1])
-                    response = chat.send_message(last_user_msg) # Usa l'ultimo messaggio salvato
+                    response = chat.send_message(prompt)
                     response_text = response.text
                     
                     if response.usage_metadata:
