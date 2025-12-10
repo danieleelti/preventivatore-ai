@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from openai import OpenAI
 import csv
 import os
 
@@ -172,7 +173,6 @@ if locations_module and location_database:
         location_instructions_block = locations_module.get_location_instructions(loc_db_string)
 
 # --- 4. CONFIGURAZIONE API E PASSWORD ---
-api_key = st.secrets["GOOGLE_API_KEY"]
 PASSWORD_SEGRETA = "TeamBuilding2025#"
 
 if "authenticated" not in st.session_state:
@@ -188,6 +188,47 @@ if not st.session_state.authenticated:
         else:
             st.error("Password errata")
     st.stop()
+
+# --- 4.b CONFIGURAZIONE AI (IN ALTO) ---
+st.title("🦁 💰 FATTURAGE 💰 🦁")
+
+with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
+    col_prov, col_mod = st.columns(2)
+    
+    with col_prov:
+        provider = st.selectbox(
+            "Scegli Provider", 
+            ["Google Gemini", "Groq"]
+        )
+
+    # Selezione Modello in base al provider
+    if provider == "Google Gemini":
+        model_options = ["gemini-1.5-pro-latest", "gemini-1.5-flash"]
+    elif provider == "Groq":
+        model_options = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it"
+        ]
+    
+    with col_mod:
+        selected_model_name = st.selectbox("Versione Modello", model_options)
+    
+    # Recupero Chiave API corretta
+    api_key = None
+    if provider == "Google Gemini":
+        api_key = st.secrets.get("GOOGLE_API_KEY")
+    elif provider == "Groq":
+        api_key = st.secrets.get("GROQ_API_KEY")
+
+    if not api_key:
+        st.error(f"⚠️ Manca la chiave API per {provider} nei secrets!")
+    else:
+        st.caption(f"✅ Attivo: {provider} - {selected_model_name}")
+
+st.caption(f"Assistente Virtuale Senior - {provider}")
 
 # --- 5. SYSTEM PROMPT DEFINITIVO ---
 BASE_INSTRUCTIONS = """
@@ -303,33 +344,16 @@ Se l'utente scrive "Reset", cancella la memoria.
 # Assembliamo il Prompt
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
-# --- 6. AVVIO AI ---
-genai.configure(api_key=api_key)
-
-model = genai.GenerativeModel(
-  model_name="gemini-3-pro-preview", 
-  generation_config={"temperature": 0.0},
-  system_instruction=FULL_SYSTEM_PROMPT,
-  safety_settings={
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-  },
-)
-
 # --- 7. CHAT ---
-st.title("🦁 💰 FATTURAGE 💰 🦁")
-st.caption("Assistente Virtuale Senior - MasterTb Connected")
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
     welcome = "Ciao! Sono pronto. Dimmi numero pax, data e obiettivo."
     st.session_state.messages.append({"role": "model", "content": welcome})
 
 for message in st.session_state.messages:
-    role = message["role"]
-    with st.chat_message(role):
+    # Mappa visuale: 'model' viene visualizzato come assistente
+    role_to_show = "assistant" if message["role"] == "model" else message["role"]
+    with st.chat_message(role_to_show):
         st.markdown(message["content"], unsafe_allow_html=True) 
 
 if prompt := st.chat_input("Scrivi qui la richiesta..."):
@@ -341,25 +365,65 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
         st.session_state.messages = []
         st.rerun()
 
-    with st.chat_message("model"):
-        with st.spinner("Elaborazione con Gemini 3 Pro..."):
+    with st.chat_message("assistant"):
+        with st.spinner(f"Elaborazione con {provider}..."):
             try:
-                history_gemini = []
-                for m in st.session_state.messages:
-                    if m["role"] != "model":
-                        history_gemini.append({"role": "user", "parts": [m["content"]]})
-                    else:
-                        history_gemini.append({"role": "model", "parts": [m["content"]]})
+                if not api_key:
+                     st.error("Chiave API mancante. Controlla i secrets.")
+                     st.stop()
                 
-                chat = model.start_chat(history=history_gemini[:-1])
-                response = chat.send_message(prompt)
-                
-                # HTML abilitato per i titoli dei blocchi
-                st.markdown(response.text, unsafe_allow_html=True) 
-                st.session_state.messages.append({"role": "model", "content": response.text})
+                response_text = ""
+
+                # ---------------- GOOGLE GEMINI ----------------
+                if provider == "Google Gemini":
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel(
+                        model_name=selected_model_name, 
+                        generation_config={"temperature": 0.0},
+                        system_instruction=FULL_SYSTEM_PROMPT,
+                        safety_settings={
+                            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                        },
+                    )
+                    
+                    # Converti history per Gemini (role: 'user' o 'model')
+                    history_gemini = []
+                    for m in st.session_state.messages:
+                        if m["role"] != "model":
+                            history_gemini.append({"role": "user", "parts": [m["content"]]})
+                        else:
+                            history_gemini.append({"role": "model", "parts": [m["content"]]})
+                    
+                    # Usiamo history[:-1] perché l'ultimo prompt lo mandiamo con send_message
+                    chat = model.start_chat(history=history_gemini[:-1])
+                    response = chat.send_message(prompt)
+                    response_text = response.text
+
+                # ---------------- GROQ (Via OpenAI Client) ----------------
+                elif provider == "Groq":
+                    # Groq usa le API compatibili con OpenAI
+                    client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+                    
+                    # Costruzione messaggi per Groq
+                    messages_groq = [{"role": "system", "content": FULL_SYSTEM_PROMPT}]
+                    for m in st.session_state.messages:
+                        # Mappa 'model' -> 'assistant'
+                        role = "assistant" if m["role"] == "model" else "user"
+                        messages_groq.append({"role": role, "content": m["content"]})
+                    
+                    resp = client.chat.completions.create(
+                        model=selected_model_name,
+                        messages=messages_groq,
+                        temperature=0.0
+                    )
+                    response_text = resp.choices[0].message.content
+
+                # Output Finale
+                st.markdown(response_text, unsafe_allow_html=True) 
+                st.session_state.messages.append({"role": "model", "content": response_text})
                 
             except Exception as e:
-                st.error(f"Errore: {e}")
-
-
-
+                st.error(f"Errore durante la generazione con {provider}: {e}")
