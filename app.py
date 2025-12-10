@@ -154,10 +154,6 @@ if not st.session_state.authenticated:
 # --- 4.b CONFIGURAZIONE AI ---
 st.title("🦁 💰 FATTURAGE 💰 🦁")
 
-# Inizializza contatore token totale se non esiste
-if "total_tokens_used" not in st.session_state:
-    st.session_state.total_tokens_used = 0
-
 # Variabile per le istruzioni location (vuota di default)
 location_instructions_block = ""
 
@@ -198,9 +194,7 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
     if not api_key:
         st.error(f"⚠️ Manca la chiave API per {provider} nei secrets!")
     else:
-        # Mostra token totali accumulati
         st.caption(f"✅ Attivo: {provider} - {selected_model_name}")
-        st.info(f"📊 **Consumo Totale Sessione:** {st.session_state.total_tokens_used} Token")
 
 if provider == "Groq":
     st.warning("⚠️ Groq ha un limite di token basso. Se fallisce, usa Gemini.")
@@ -314,7 +308,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
 
     if prompt.lower().strip() in ["reset", "nuovo", "cancella", "stop"]:
         st.session_state.messages = []
-        st.session_state.total_tokens_used = 0 # Resetta anche contatore
         st.rerun()
 
     with st.chat_message("assistant"):
@@ -326,7 +319,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
                 response_text = ""
                 token_usage_info = ""
-                current_total_tokens = 0
 
                 # --- GOOGLE GEMINI ---
                 if provider == "Google Gemini":
@@ -351,8 +343,10 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if response.usage_metadata:
-                        current_total_tokens = response.usage_metadata.total_token_count
-                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
+                        in_tok = response.usage_metadata.prompt_token_count
+                        out_tok = response.usage_metadata.candidates_token_count
+                        tot_tok = response.usage_metadata.total_token_count
+                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
 
                 # --- GROQ ---
                 elif provider == "Groq":
@@ -373,17 +367,16 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if resp.usage:
-                        current_total_tokens = resp.usage.total_tokens
-                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
-
-                # AGGIORNA CONTATORE GLOBALE
-                st.session_state.total_tokens_used += current_total_tokens
+                        in_tok = resp.usage.prompt_tokens
+                        out_tok = resp.usage.completion_tokens
+                        tot_tok = resp.usage.total_tokens
+                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
 
                 st.markdown(response_text, unsafe_allow_html=True) 
                 
-                # Visualizza info token
+                # Visualizza info token singola richiesta
                 if token_usage_info:
-                    st.caption(f"{token_usage_info} | **Totale Sessione:** {st.session_state.total_tokens_used} token")
+                    st.caption(token_usage_info)
 
                 st.session_state.messages.append({"role": "model", "content": response_text})
                 
