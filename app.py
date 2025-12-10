@@ -205,7 +205,6 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
         selected_model_name = st.selectbox("Versione Modello", model_options)
     
     st.markdown("---")
-    # Collegato allo session_state tramite key
     use_location_db = st.checkbox(
         "🏰 **Abilita Database Location** (Attiva solo se richiesto)", 
         key="enable_locations_state"
@@ -294,10 +293,13 @@ Prima della tabella, inserisci il titolo usando ESATTAMENTE questo codice HTML, 
 <span class="block-claim">Brief: [Pax] pax | [Data] | [Location] | [Obiettivo/Mood]</span>
 </div>
 
-**⚠️ REGOLA LINK SCHEDA TECNICA (CRITICO):**
+**⚠️ REGOLA LINK SCHEDA TECNICA (CRITICO - DO OR DIE):**
 1. Cerca nel DB la colonna "Scheda Tecnica", "Link", "URL" o "Pdf".
-2. **COPIA L'URL ESATTAMENTE COM'È.** (I link sono già stati puliti, non modificarli).
-3. FORMATO: `[NomeFormat.pdf](URL_DAL_DATABASE)`.
+2. **COPIA L'URL ESATTAMENTE COM'È.** (I link sono già stati puliti dal sistema, contengono già %20, NON modificarli).
+3. **TESTO DEL LINK:** Deve essere il nome del format senza spazi, seguito da .pdf.
+   - Esempio: Se il format è "Mystery Box", scrivi `MysteryBox.pdf`.
+   - Esempio: Se il format è "Cooking Team", scrivi `CookingTeam.pdf`.
+4. FORMATO OBBLIGATORIO: `[NomeSenzaSpazi.pdf](URL_DAL_DATABASE)`.
 
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
@@ -357,7 +359,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
     keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
     is_location_request = any(k in prompt.lower() for k in keywords_location)
     
-    # Se chiede location MA il DB è spento, mostriamo bottone e FERMIAMO l'esecuzione.
     should_generate_response = True
     if is_location_request and not st.session_state.enable_locations_state:
         should_generate_response = False
@@ -366,7 +367,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
             st.info("Per includere suggerimenti mirati sulle location partner, attiva il database qui sotto:")
             
             st.button("🟢 ATTIVA DATABASE LOCATION E RISPONDI", on_click=enable_locations_callback)
-            # Stop temporaneo, riparte dopo il clic
 
     # --- 3. GENERAZIONE RISPOSTA AI ---
     if should_generate_response:
