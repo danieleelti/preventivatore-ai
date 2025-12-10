@@ -127,7 +127,6 @@ def database_to_string(database_list):
     except Exception: return ""
 
 # --- CARICAMENTO DATI BASE (SOLO FORMAT) ---
-# Questo viene caricato SEMPRE perché serve per i preventivi
 master_database = carica_google_sheet('MasterTbGoogleAi') 
 
 if master_database is None:
@@ -226,15 +225,22 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 **FASE 0: CHECK INFORMAZIONI**
 
 **FASE 1: LA REGOLA DEL 12 (Presentazione Format)**
-Proponi 12 FORMAT in 4 blocchi usando i Criteri del DB (Ranking, Novità, Tag).
+Proponi ESATTAMENTE 12 FORMAT divisi in 4 blocchi, seguendo questa struttura numerica RIGIDA:
 
 ⚠️ **TITOLI BLOCCHI HTML:**
 <div class="block-header"><span class="block-title">NOME BLOCCO</span><span class="block-claim">Claim</span></div>
 
-**BLOCCO 1: BEST SELLER** (Ranking Alto)
-**BLOCCO 2: NOVITÀ** (Flag Novità/Anno)
-**BLOCCO 3: VIBE & RELAX** (Tag Relax/Cena)
-**BLOCCO 4: SOCIAL** (Tag Social/Charity)
+**BLOCCO 1: I BEST SELLER** (Devi proporre 4 format)
+* **CRITERIO:** Valore più alto in **"Ranking"** o **"Voto"**.
+
+**BLOCCO 2: LE NOVITÀ** (Devi proporre 4 format)
+* **CRITERIO:** "Sì"/"True" in **"Novità"** o **"Anno"** recente.
+
+**BLOCCO 3: VIBE & RELAX** (Devi proporre 2 format)
+* **CRITERIO:** Tag "Relax", "Soft", "Atmosphere", "Cena" in **"Categoria"**/**"Tag"**.
+
+**BLOCCO 4: SOCIAL** (Devi proporre 2 format)
+* **CRITERIO:** Tag "Social", "Charity", "Creativo" in **"Categoria"**/**"Tag"**.
 
 **Struttura Format:**
 ### [Emoji] [Nome]
