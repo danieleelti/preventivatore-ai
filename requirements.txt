@@ -4,3 +4,4 @@ openai
 pandas
 gspread
 oauth2client
+pip install groq
