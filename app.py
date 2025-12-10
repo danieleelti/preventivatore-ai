@@ -154,6 +154,10 @@ if not st.session_state.authenticated:
 # --- 4.b CONFIGURAZIONE AI ---
 st.title("🦁 💰 FATTURAGE 💰 🦁")
 
+# Inizializza contatore token totale se non esiste
+if "total_tokens_used" not in st.session_state:
+    st.session_state.total_tokens_used = 0
+
 # Variabile per le istruzioni location (vuota di default)
 location_instructions_block = ""
 
@@ -246,21 +250,23 @@ Proponi ESATTAMENTE 12 FORMAT divisi in 4 blocchi, seguendo questa struttura num
 ### [Emoji] [Nome]
 [Descrizione basata sul DB]
 
-**FASE 2: SUGGERIMENTO LOCATION (CONDIZIONALE)**
-⚠️ **ATTENZIONE:** Se l'utente NON ha chiesto esplicitamente una location o "dove farlo", **SALTA COMPLETAMENTE QUESTA FASE**. Non scrivere nulla, nemmeno il titolo o avvisi.
-
-*SE E SOLO SE* l'utente ha chiesto location:
-Segui le istruzioni sottostanti:
+**FASE 2: SUGGERIMENTO LOCATION**
+Segui rigorosamente le istruzioni sottostanti. Se il database è disabilitato, devi comunicarlo.
 {location_instructions_block}
 
 **FASE 3: TABELLA RIEPILOGATIVA (⛔️ TASSATIVA ⛔️)**
 DEVI OBBLIGATORIAMENTE GENERARE QUESTA TABELLA ALLA FINE DELLA RISPOSTA.
 NON TERMINARE MAI LA RISPOSTA SENZA QUESTA TABELLA.
 
+Prima della tabella, inserisci il titolo usando ESATTAMENTE questo codice HTML, compilando i dati del brief:
+<div class="block-header">
+<span class="block-title">TABELLA RIEPILOGATIVA</span>
+<span class="block-claim">Brief: [Pax] pax | [Data] | [Location] | [Obiettivo/Mood]</span>
+</div>
+
 **⚠️ REGOLA LINK SCHEDA TECNICA (CRITICO - DO OR DIE):**
 1. Cerca nel DB la colonna "Scheda Tecnica", "Link", "URL" o "Pdf".
 2. **SANITIZZAZIONE URL:** Se l'URL contiene degli SPAZI, SOSTITUISCILI CON `%20`.
-   - Esempio: `.../Green Energy.pdf` --> DEVE DIVENTARE `.../Green%20Energy.pdf`
 3. Il testo del link deve essere sempre "NomeFormat.pdf".
 4. FORMATO OBBLIGATORIO: `[NomeFormat.pdf](URL_SANITIZZATO_SENZA_SPAZI)`.
 
@@ -271,8 +277,22 @@ NON TERMINARE MAI LA RISPOSTA SENZA QUESTA TABELLA.
 
 *(Inserisci qui tutti i 12 format proposti con i relativi prezzi calcolati)*.
 
-**FASE 4: INFO UTILI**
-Copia il blocco standard (Format nostri, Location esclusa, Prezzo all inclusive, Assicurazione pioggia).
+**FASE 4: INFO UTILI (OBBLIGATORIO - COPIA ESATTA)**
+Devi riportare ESATTAMENTE questo blocco, inclusi gli emoji:
+
+### Informazioni Utili
+
+✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+
+✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+
+✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+
+✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+
+✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+
+✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
 # NOTA: location_instructions_block è già stato inserito sopra tramite f-string o accodamento
@@ -308,6 +328,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
 
     if prompt.lower().strip() in ["reset", "nuovo", "cancella", "stop"]:
         st.session_state.messages = []
+        st.session_state.total_tokens_used = 0 # Resetta anche contatore
         st.rerun()
 
     with st.chat_message("assistant"):
@@ -319,6 +340,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
                 response_text = ""
                 token_usage_info = ""
+                current_total_tokens = 0
 
                 # --- GOOGLE GEMINI ---
                 if provider == "Google Gemini":
@@ -343,10 +365,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if response.usage_metadata:
-                        in_tok = response.usage_metadata.prompt_token_count
-                        out_tok = response.usage_metadata.candidates_token_count
-                        tot_tok = response.usage_metadata.total_token_count
-                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
+                        current_total_tokens = response.usage_metadata.total_token_count
+                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
 
                 # --- GROQ ---
                 elif provider == "Groq":
@@ -367,10 +387,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if resp.usage:
-                        in_tok = resp.usage.prompt_tokens
-                        out_tok = resp.usage.completion_tokens
-                        tot_tok = resp.usage.total_tokens
-                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
+                        current_total_tokens = resp.usage.total_tokens
+                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
 
                 st.markdown(response_text, unsafe_allow_html=True) 
                 
