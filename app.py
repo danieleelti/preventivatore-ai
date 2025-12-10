@@ -24,7 +24,7 @@ st.markdown("""
         line-height: 1.6 !important;
     }
     
-    /* TITOLI FORMAT (H3) */
+    /* TITOLI FORMAT (H3) - RIDIMENSIONATI */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 17px !important;
@@ -35,7 +35,7 @@ st.markdown("""
         text-transform: uppercase !important;
     }
 
-    /* Intestazioni Blocchi (HTML generato dall'AI) */
+    /* Intestazioni Blocchi */
     .block-header {
         background-color: #f8f9fa;
         border-left: 5px solid #ff4b4b;
@@ -85,14 +85,15 @@ st.markdown("""
     
     /* Sidebar Button */
     .stButton button {
-        background-color: #ff4b4b !important;
-        color: white !important;
+        width: 100%;
         font-weight: bold !important;
         border: none !important;
-        width: 100%;
-        height: 50px;
-        font-size: 16px !important;
-        margin-top: 10px;
+        height: 45px;
+    }
+    /* Bottone Genera (Rosso) - Targettizzato tramite gerarchia */
+    div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:nth-child(10) button {
+        background-color: #ff4b4b !important;
+        color: white !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -103,9 +104,19 @@ try:
 except ImportError:
     locations_module = None
 
-# --- FUNZIONE CALLBACK PER ABILITARE LOCATION ---
+# --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
+
+def reset_preventivo():
+    """Resetta la chat e svuota i campi di input."""
+    st.session_state.messages = []
+    st.session_state.total_tokens_used = 0
+    # Svuota i widget tramite le loro chiavi
+    keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
+    for key in keys_to_clear:
+        if key in st.session_state:
+            st.session_state[key] = ""
 
 # --- 2. GESTIONE DATABASE (GOOGLE SHEETS) ---
 def get_gspread_client():
@@ -231,13 +242,22 @@ with st.sidebar:
     st.markdown("---")
     
     st.subheader("📝 Dati Brief")
-    cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA")
+    
+    # PULSANTE NUOVO PREVENTIVO (Appare solo se c'è storia > 1 messaggio)
+    if len(st.session_state.messages) > 1:
+        if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
+            reset_preventivo()
+            st.rerun()
+        st.markdown("---")
+
+    # WIDGET CON CHIAVI PER IL RESET
+    cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
     col_pax, col_data = st.columns(2)
-    with col_pax: pax_input = st.text_input("N. Pax", placeholder="50")
-    with col_data: data_evento_input = st.text_input("Data", placeholder="12 Maggio")
-    citta_input = st.text_input("Città / Location", placeholder="Milano / Villa Reale")
-    durata_input = st.text_input("Durata Attività", placeholder="es. 2-3 ore")
-    obiettivo_input = st.text_area("Obiettivo / Mood / Note", placeholder="Descrivi l'obiettivo...", height=100)
+    with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
+    with col_data: data_evento_input = st.text_input("Data", placeholder="12 Maggio", key="wdg_data")
+    citta_input = st.text_input("Città / Location", placeholder="Milano / Villa Reale", key="wdg_citta")
+    durata_input = st.text_input("Durata Attività", placeholder="es. 2-3 ore", key="wdg_durata")
+    obiettivo_input = st.text_area("Obiettivo / Mood / Note", placeholder="Descrivi l'obiettivo...", height=100, key="wdg_obiettivo")
 
     st.markdown("###")
     generate_btn = st.button("🚀 GENERA PREVENTIVO", type="primary")
@@ -257,20 +277,29 @@ with st.sidebar:
         api_key = st.secrets.get("GOOGLE_API_KEY") if provider == "Google Gemini" else st.secrets.get("GROQ_API_KEY")
         if not api_key: st.error(f"⚠️ Manca API Key per {provider}")
 
-# --- GESTIONE LOGICA LOCATION (SOLO CARICAMENTO DATI) ---
-# Se spento, la variabile è vuota. Se acceso, contiene i dati.
-# NON ESISTE PIÙ LA "FASE 2" NEL PROMPT.
-location_data_string = ""
+# --- GESTIONE LOGICA LOCATION ---
+location_instructions_block = ""
+location_guardrail_prompt = ""
+
 if use_location_db:
     with st.spinner("Caricamento Location..."):
         location_database = carica_google_sheet('LocationGoogleAi')
         if location_database and locations_module:
             loc_db_string = database_to_string(location_database)
-            # Carichiamo i dati in una variabile che useremo SE l'AI decide di parlarne, 
-            # ma senza forzare una "Fase".
-            location_data_string = f"\n### 🏰 [DATABASE LOCATION DISPONIBILI]\n{locations_module.get_location_instructions(loc_db_string)}\n"
+            location_instructions_block = locations_module.get_location_instructions(loc_db_string)
+            location_guardrail_prompt = f"FASE 2: SUGGERIMENTO LOCATION\n{location_instructions_block}"
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
+else:
+    # Se disabilitato, istruisco l'AI a saltare completamente.
+    location_guardrail_prompt = """
+    FASE 2: SUGGERIMENTO LOCATION
+    ⚠️ ISTRUZIONE TASSATIVA: IL DATABASE LOCATION È SPENTO.
+    NON SCRIVERE NULLA IN QUESTA FASE.
+    NON INVENTARE LOCATION.
+    NON SCRIVERE 'NESSUNA LOCATION TROVATA'.
+    SALTA DIRETTAMENTE ALLA TABELLA RIEPILOGATIVA.
+    """
 
 # --- 5. SYSTEM PROMPT ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
@@ -286,45 +315,58 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 ### 🎨 REGOLE VISUALI (TASSATIVE)
 1.  **ICONE:** Inserisci un'emoji SOLO nel titolo del format (es. "### 🍳 Cooking").
 2.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni (Blocchi).
-3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", "FASE 1", "FASE 2" ecc. come testo semplice.
-4.  **DIVIETO DUPLICAZIONE:** Se usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE.
+3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", ecc. come testo semplice. Usa solo l'HTML.
+4.  **DIVIETO DUPLICAZIONE:** Quando usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE SOPRA O SOTTO.
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO - CALCOLO NASCOSTO)
-⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
+⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. NON dire "applico il moltiplicatore". L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
 
-**1. IDENTIFICA P_BASE:**
-Trova la colonna 'Prezzo' o 'P_Base' nel database per il format scelto.
-
-**2. APPLICA I MOLTIPLICATORI:**
+**1. IDENTIFICA I MOLTIPLICATORI:**
 * **M_PAX (Numero Partecipanti):**
-    * < 5 pax: x3.20 | 5-10 pax: x1.60 | 11-20 pax: x1.05 | 21-30 pax: x0.95
-    * 31-60 pax: x0.90 | 61-90 pax: x0.90 | 91-150 pax: x0.85
-    * 151-250 pax: x0.70 | > 250 pax: x0.60
-* **M_STAGIONE (in base alla Data):**
-    * Alta (Mag, Giu, Lug, Set, Ott, Dic): x1.10
-    * Bassa (Gen, Feb, Mar, Apr, Ago, Nov): x1.02
-* **M_LOCATION (in base alla Città):**
-    * Milano: x1.00 | Roma: x0.95 | Centro: x1.05 | Nord/Sud (No MI/RM): x1.15 | Isole: x1.30
+    * < 5 pax: x3.20
+    * 5-10 pax: x1.60
+    * 11-20 pax: x1.05
+    * 21-30 pax: x0.95
+    * 31-60 pax: x0.90
+    * 61-90 pax: x0.90
+    * 91-150 pax: x0.85
+    * 151-250 pax: x0.70
+    * > 250 pax: x0.60
+* **M_STAGIONE:**
+    * Maggio, Giugno, Luglio, Settembre, Ottobre, Dicembre: x1.10
+    * Gennaio, Febbraio, Marzo, Aprile, Agosto, Novembre: x1.02
+* **M_LOCATION:**
+    * Milano (città): x1.00
+    * Roma (città): x0.95
+    * Centro Italia: x1.05
+    * Nord/Sud Italia (Fuori MI/RM): x1.15
+    * Isole: x1.30
 * **M_DURATA:**
-    * 0-2h: x1.00 | Mezza giornata: x1.10 | Giornata intera: x1.20
+    * Fino a 2h: x1.00
+    * Mezza giornata (2-4h): x1.10
+    * Giornata intera (>4h): x1.20
 
-**3. FORMULA:**
-`PREZZO_CALCOLATO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * NUMERO_PAX`
+**2. APPLICA LA FORMULA BASE:**
+`PREZZO_GREZZO = (Prezzo_Listino_CSV * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * Numero_Pax`
 
-**4. CONTROLLO MINIMUM SPENDING:**
-Se `PREZZO_CALCOLATO` < 1800, allora `PREZZO_CALCOLATO` = 1800.
+**3. REGOLA MINIMUM SPENDING:**
+Se `PREZZO_GREZZO` è inferiore a € 1.800,00 -> Il prezzo diventa **€ 1.800,00**.
 
-**5. ARROTONDAMENTO (TASSATIVO):**
-Applica questa formula: `PREZZO_FINALE = ARROTONDA((PREZZO_CALCOLATO + 60) / 100) * 100`
+**4. REGOLA ARROTONDAMENTO (CRITICO):**
+Devi arrotondare il totale usando questa logica matematica:
+`PREZZO_FINALE = ARROTONDA((PREZZO_GREZZO + 60) / 100) * 100`
+*(In pratica: se le ultime due cifre sono 00-39 arrotonda per difetto al 100, se sono 40-99 arrotonda per eccesso al 100).*
 
 ---
-### 🚦 STRUTTURA DELLA RISPOSTA (SEQUENZA OBBLIGATORIA)
+### 🚦 FLUSSO DI LAVORO (ORDINE OBBLIGATORIO)
 
-**1. PRESENTAZIONE FORMAT (LA REGOLA DEL 12)**
+**FASE 0: CHECK INFORMAZIONI**
+
+**FASE 1: LA REGOLA DEL 12 (Presentazione Format)**
 Proponi 12 FORMAT divisi in 4 categorie.
 ⚠️ **PRIORITÀ:** Se l'utente chiede un format specifico, INCLUDILO SEMPRE.
 
-**PER OGNI CATEGORIA, USA SOLO QUESTO HTML PER IL TITOLO:**
+**PER OGNI CATEGORIA, USA SOLO QUESTO HTML PER IL TITOLO (NON AGGIUNGERE ALTRO):**
 <div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>
 
 Le categorie sono:
@@ -335,12 +377,12 @@ Le categorie sono:
 
 **Struttura Singolo Format:**
 ### [Emoji] [Nome Format]
-[Descrizione di max 2-3 righe accattivanti. Inizia con una emoji contestualizzata.]
+[Descrizione di max 2-3 righe accattivanti. Inizia se possibile con una emoji contestualizzata.]
 
-*(NB: Se hai dati sulle location, e solo se pertinenti, puoi accennarli brevemente qui o dopo, MA SENZA CREARE UNA SEZIONE "FASE 2" SEPARATA).*
+{location_guardrail_prompt}
 
-**2. TABELLA RIEPILOGATIVA (TASSATIVA)**
-Usa ESCLUSIVAMENTE questo HTML per il titolo:
+**FASE 3: TABELLA RIEPILOGATIVA (TASSATIVA)**
+Usa ESCLUSIVAMENTE questo HTML per il titolo (niente Markdown):
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {data_evento_input} | {citta_input}</span></div>
 
 **LINK SCHEDA TECNICA (REGOLA SUPREMA):**
@@ -352,7 +394,7 @@ Usa ESCLUSIVAMENTE questo HTML per il titolo:
 | :--- | :--- | :--- |
 | 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO) |
 
-**3. INFO UTILI (OBBLIGATORIO)**
+**FASE 4: INFO UTILI (OBBLIGATORIO)**
 Riporta questo blocco ESATTAMENTE così com'è:
 
 ### Informazioni Utili
@@ -370,8 +412,7 @@ Riporta questo blocco ESATTAMENTE così com'è:
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-# Se location_data_string è vuota, l'AI non saprà nulla delle location.
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_data_string}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
@@ -401,7 +442,7 @@ if prompt_to_process:
     st.session_state.messages.append({"role": "user", "content": prompt_to_process})
     with st.chat_message("user"): st.markdown(prompt_to_process)
 
-    # Controllo Location (Semplificato: solo avviso bottone se DB spento)
+    # Controllo Location
     keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
     is_location_request = any(k in prompt_to_process.lower() for k in keywords_location)
     
