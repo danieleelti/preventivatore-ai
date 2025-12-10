@@ -9,17 +9,10 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import pytz
 
-# --- GESTIONE IMPORT LIBRERIE OPZIONALI ---
-from openai import OpenAI
-try:
-    from groq import Groq
-except ImportError:
-    Groq = None
-
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO (COMPLETO) ---
+# --- CSS PERSONALIZZATO ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
@@ -115,13 +108,10 @@ except ImportError:
 # --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
-    # Flag fondamentale per dire "al prossimo riavvio, riprocessa l'ultimo messaggio"
     st.session_state.retry_trigger = True
 
 def reset_preventivo():
-    """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
-    st.session_state.total_tokens_used = 0
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
     for key in keys_to_clear:
         if key in st.session_state:
@@ -157,7 +147,6 @@ def carica_google_sheet(sheet_name):
         return None
 
 def database_to_string(database_list):
-    """Converte la lista di dizionari in stringa per il prompt con sanitizzazione link."""
     if not database_list: return "Nessun dato disponibile."
     try:
         if not isinstance(database_list[0], dict): return "" 
@@ -166,7 +155,6 @@ def database_to_string(database_list):
             clean_riga = {}
             for k, v in riga.items():
                 val_str = str(v) if v is not None else ""
-                # Pulizia automatica spazi nei link
                 if val_str.strip().lower().startswith("http") and " " in val_str:
                     val_str = val_str.replace(" ", "%20")
                 clean_riga[k] = val_str
@@ -179,9 +167,7 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
-# --- FUNZIONE DI SALVATAGGIO ---
 def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
-    """Salva una riga nel foglio PreventiviInviatiAi."""
     client = get_gspread_client()
     if not client: return False
     try:
@@ -190,8 +176,6 @@ def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
         now = datetime.now(tz_ita)
         data_oggi = now.strftime("%Y-%m-%d")
         ora_oggi = now.strftime("%H:%M:%S")
-        
-        # Colonne: Nome Cliente | Utente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
         row = [cliente, utente, data_oggi, ora_oggi, pax, data_evento, citta, contenuto]
         sheet.append_row(row)
         return True
@@ -217,13 +201,12 @@ if not st.session_state.authenticated:
     with c2:
         st.title("🔒 Area Riservata")
         pwd = st.text_input("Inserisci Password Staff", type="password")
-        
         if st.button("Accedi"):
             users_db = st.secrets.get("passwords", {})
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
-                st.session_state.messages = [] # Reset chat al login
+                st.session_state.messages = [] 
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -234,8 +217,6 @@ if "enable_locations_state" not in st.session_state:
     st.session_state.enable_locations_state = False 
 if "retry_trigger" not in st.session_state:
     st.session_state.retry_trigger = False
-if "total_tokens_used" not in st.session_state:
-    st.session_state.total_tokens_used = 0
 
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
@@ -254,7 +235,6 @@ if "messages" not in st.session_state or not st.session_state.messages:
     ]
     quote = random.choice(aforismi)
     welcome_msg = f"Ciao **{st.session_state.username}**! 👋\n\n_{quote}_\n\nUsa la barra laterale a sinistra per compilare i dati."
-        
     st.session_state.messages.append({"role": "model", "content": welcome_msg})
 
 # --- SIDEBAR ---
@@ -265,14 +245,12 @@ with st.sidebar:
     
     st.subheader("📝 Dati Brief")
     
-    # PULSANTE NUOVO PREVENTIVO
     if len(st.session_state.messages) > 1:
         if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
             reset_preventivo()
             st.rerun()
         st.markdown("---")
 
-    # WIDGET INPUT
     cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
     col_pax, col_data = st.columns(2)
     with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
@@ -288,16 +266,13 @@ with st.sidebar:
     with st.expander("⚙️ Impostazioni Avanzate", expanded=False):
         use_location_db = st.checkbox("🏰 Abilita Database Location", key="enable_locations_state")
         st.markdown("---")
-        provider = st.selectbox("Provider AI", ["Google Gemini", "Groq"])
-        if provider == "Google Gemini":
-            model_options = ["gemini-3-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
-            if "gemini-3-pro-preview" not in model_options: model_options.insert(0, "gemini-3-pro-preview")
-        elif provider == "Groq":
-            model_options = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
-        selected_model_name = st.selectbox("Modello", model_options)
+        # --- GEMINI ONLY ---
+        model_options = ["gemini-3-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
+        if "gemini-3-pro-preview" not in model_options: model_options.insert(0, "gemini-3-pro-preview")
+        selected_model_name = st.selectbox("Modello Google", model_options)
         
-        api_key = st.secrets.get("GOOGLE_API_KEY") if provider == "Google Gemini" else st.secrets.get("GROQ_API_KEY")
-        if not api_key: st.error(f"⚠️ Manca API Key per {provider}")
+        api_key = st.secrets.get("GOOGLE_API_KEY")
+        if not api_key: st.error("⚠️ Manca GOOGLE_API_KEY in secrets.toml")
 
 # --- GESTIONE LOGICA LOCATION ---
 location_instructions_block = ""
@@ -313,7 +288,6 @@ if use_location_db:
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
 else:
-    # Se disabilitato, istruisco l'AI a saltare completamente.
     location_guardrail_prompt = """
     ISTRUZIONE TASSATIVA LOCATION: IL DATABASE LOCATION È SPENTO.
     NON SCRIVERE NULLA SU LOCATION.
@@ -321,14 +295,10 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# ==============================================================================
-# --- 5. COSTRUZIONE SYSTEM PROMPTS (DUE STRATEGIE DIVERSE) ---
-# ==============================================================================
-
+# --- 5. SYSTEM PROMPT (GEMINI CLASSIC - QUELLO CHE FUNZIONA) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
-# --- STRATEGIA 1: GEMINI (Ricco, discorsivo, dettagliato) ---
-GEMINI_INSTRUCTIONS = f"""
+BASE_INSTRUCTIONS = f"""
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 {context_brief}
 
@@ -337,20 +307,22 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 2.  **QUALIFICAZIONE:** Se il brief è insufficiente, chiedi info.
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO NASCOSTO)
+⚠️ **REGOLA SUPREMA:** NON spiegare la formula. Mostra solo il prezzo finale.
+
 * **P_BASE:** Dal database.
 * **MOLTIPLICATORI:**
     * Pax < 5: x3.20 | 5-10: x1.60 | 11-20: x1.05 | 21-30: x0.95 | 31-60: x0.90 | 61-90: x0.90 | 91-150: x0.85 | 151-250: x0.70 | >250: x0.60
     * Stagione Alta (Mag-Dic escluso Nov): x1.10 | Bassa (Gen-Apr, Nov): x1.02
     * Location: MI: x1.00 | RM: x0.95 | VE: x1.30 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
     * Durata 0-2h: x1.00 | Mezza: x1.10 | Intera: x1.20
-* **FORMULA:** `(P_BASE * MOLTIPLICATORI) * PAX` -> Arrotondato ai 100€ superiori (Minimo 1800€).
+* **FORMULA:** `(P_BASE * MOLTIPLICATORI) * PAX` -> Arrotondato ai 100€ superiori. Minimo 1800€.
 
 ### 🚦 ORDINE DI OUTPUT (OBBLIGATORIO)
 
-**1. INTRODUZIONE**
+**FASE 1: INTRODUZIONE**
 Scrivi un paragrafo di 3-4 righe (testo normale). Saluta {cliente_input}, cita i dettagli del brief e usa un tono caldo e professionale.
 
-**2. PRESENTAZIONE FORMAT (Regola 4+4+2+2)**
+**FASE 2: LA REGOLA DEL 12 (4+4+2+2)**
 Devi presentare ESATTAMENTE 12 format divisi in 4 categorie.
 Per OGNI categoria, usa ESCLUSIVAMENTE questo HTML per il titolo:
 `<div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>`
@@ -363,21 +335,21 @@ Le categorie sono:
 
 *Regole Format:* Inizia con un'emoji nel titolo (es. "### 🍳 Cooking"). Niente emoji nella descrizione.
 
-**3. TABELLA RIEPILOGATIVA**
+{location_guardrail_prompt}
+
+**FASE 3: TABELLA RIEPILOGATIVA**
 Titolo HTML: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {citta_input}</span></div>`
 
-**LINK SCHEDA TECNICA (TASSATIVO):**
-* Il testo del link DEVE essere il nome del file (es. `Cooking.pdf`).
-* NON scrivere mai solo "Link".
-* Esempio corretto: `[Cooking.pdf](http://...)`
+**LINK SCHEDA TECNICA:**
+* Il testo del link DEVE essere il nome del file (es. `Cooking.pdf`). Non usare "Link".
+* Formato: `[Cooking.pdf](URL)`
 
-Tabella Markdown:
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
 | 🍳 Cooking | € 2.400,00 | [Cooking.pdf](...) |
 
-**4. INFO UTILI**
-Copia ESATTAMENTE questo blocco (assicurati di andare a capo tra i punti):
+**FASE 4: INFO UTILI**
+Copia ESATTAMENTE questo blocco:
 
 ### Informazioni Utili
 
@@ -394,73 +366,7 @@ Copia ESATTAMENTE questo blocco (assicurati di andare a capo tra i punti):
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-# --- STRATEGIA 2: GROQ/LLAMA (Tecnico, rigoroso, no chat) ---
-GROQ_INSTRUCTIONS = f"""
-SYSTEM OVERRIDE: SEI UN MOTORE DI RENDERING HTML/MARKDOWN. NON SEI UN ASSISTENTE.
-IL TUO SCOPO È PRENDERE I DATI E TRASFORMARLI IN UN OUTPUT VISIVO RIGIDO.
-Rispondi in Italiano.
-{context_brief}
-
-### 🔢 REGOLE DI CALCOLO (PROCESSA IN SILENZIO, STAMPA SOLO IL RISULTATO)
-* **Formula:** `(P_BASE * MOLTIPLICATORI) * PAX`
-* **MOLTIPLICATORI:**
-    * Pax < 5: x3.20 | 5-10: x1.60 | 11-20: x1.05 | 21-30: x0.95 | 31-60: x0.90 | 61-90: x0.90 | 91-150: x0.85 | 151-250: x0.70 | >250: x0.60
-    * Stagione Alta (Mag-Dic escluso Nov): x1.10 | Bassa (Gen-Apr, Nov): x1.02
-    * Location: MI: x1.00 | RM: x0.95 | VE: x1.30 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
-    * Durata 0-2h: x1.00 | Mezza: x1.10 | Intera: x1.20
-* **ARROTONDAMENTO:** A 100€ superiori. Minimo 1800€.
-
-### 🚫 DIVIETI ASSOLUTI (CRITICAL)
-1.  **VIETATO** mostrare "Fase 1", "Fase 2", "Calcolo Preventivi", "P_BASE:", "Formula:".
-2.  **VIETATO** spiegare i prezzi. Mostra solo il numero finale.
-3.  **VIETATO** usare emoji nel corpo del testo (solo nel titolo format).
-4.  **VIETATO** inventare titoli in Markdown. USA SOLO L'HTML FORNITO SOTTO.
-
-### 📝 STRUTTURA OUTPUT OBBLIGATORIA (DEVI SEGUIRE QUESTO ORDINE)
-
-**1. PARAGRAFO INTRODUTTIVO**
-Testo semplice, 3-4 righe. Saluta il cliente ({cliente_input}), cita i dati del brief (città, pax) con tono caldo e professionale.
-
-**2. PRESENTAZIONE FORMAT (Regola 4+4+2+2)**
-Devi generare 12 format. Per OGNI categoria usa TASSATIVAMENTE questo HTML:
-`<div class="block-header"><span class="block-title">NOME CATEGORIA</span><span class="block-claim">CLAIM</span></div>`
-
-* **I BEST SELLER** (4 format) - Claim: "I più amati dai nostri clienti"
-* **LE NOVITÀ** (4 format) - Claim: "Freschi di lancio"
-* **VIBE & RELAX** (2 format) - Claim: "Atmosfera e condivisione"
-* **SOCIAL** (2 format) - Claim: "Impatto positivo"
-
-*Formato singolo:*
-`### [Emoji] [Nome Format]`
-`Descrizione pulita senza emoji.`
-
-**3. TABELLA RIEPILOGATIVA**
-Usa questo titolo HTML: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {citta_input}</span></div>`
-
-Crea una tabella Markdown valida (usa `|` e vai a capo).
-Il link deve avere il nome del file (es `Cooking.pdf`).
-
-| Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
-| :--- | :--- | :--- |
-| 🍳 Cooking | € 2.400,00 | [Cooking.pdf](...) |
-
-**4. INFO UTILI**
-Copia-incolla questo blocco:
-
-### Informazioni Utili
-
-✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
-
-✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
-
-✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
-
-✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
-
-✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
-
-✔️ **Chiedici anche** servizio video/foto e gadget.
-"""
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
@@ -489,7 +395,7 @@ for message in st.session_state.messages:
     role_to_show = "assistant" if message["role"] == "model" else message["role"]
     with st.chat_message(role_to_show): st.markdown(message["content"], unsafe_allow_html=True)
 
-# --- 8. ELABORAZIONE AI ---
+# --- 8. ELABORAZIONE AI (SOLO GEMINI) ---
 if prompt_to_process:
     # Se input manuale (chat_input), aggiungilo alla history se non c'è già
     if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt_to_process:
@@ -510,45 +416,23 @@ if prompt_to_process:
 
     if should_generate:
         with st.chat_message("assistant"):
-            with st.spinner(f"Elaborazione con {provider}..."):
+            with st.spinner("Elaborazione con Google Gemini..."):
                 try:
                     if not api_key: st.error("Chiave API mancante."); st.stop()
                     
                     response_text = ""
 
-                    if provider == "Google Gemini":
-                        # === LOGICA GEMINI (Rich Prompt) ===
-                        FULL_GEMINI_PROMPT = f"{GEMINI_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
-                        
-                        genai.configure(api_key=api_key)
-                        model = genai.GenerativeModel(model_name=selected_model_name, generation_config={"temperature": 0.0}, system_instruction=FULL_GEMINI_PROMPT, safety_settings={HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE})
-                        
-                        history_gemini = []
-                        for m in st.session_state.messages:
-                            if m["role"] != "model": history_gemini.append({"role": "user", "parts": [m["content"]]})
-                            else: history_gemini.append({"role": "model", "parts": [m["content"]]})
-                        
-                        chat = model.start_chat(history=history_gemini[:-1])
-                        response = chat.send_message(prompt_to_process)
-                        response_text = response.text
-
-                    elif provider == "Groq":
-                        # === LOGICA GROQ (Strict Prompt + Native Lib) ===
-                        if Groq is None:
-                            st.error("⚠️ Libreria 'groq' non trovata. Esegui pip install groq")
-                            st.stop()
-                        
-                        client = Groq(api_key=api_key.strip())
-                        FULL_GROQ_PROMPT = f"{GROQ_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
-                        
-                        # Trucco "Clean Slate" per Groq: Non passiamo la storia per evitare loop di errori
-                        messages_groq = [
-                            {"role": "system", "content": FULL_GROQ_PROMPT},
-                            {"role": "user", "content": prompt_to_process} 
-                        ]
-                        
-                        resp = client.chat.completions.create(model=selected_model_name, messages=messages_groq, temperature=0.0)
-                        response_text = resp.choices[0].message.content
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel(model_name=selected_model_name, generation_config={"temperature": 0.0}, system_instruction=FULL_SYSTEM_PROMPT, safety_settings={HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE})
+                    
+                    history_gemini = []
+                    for m in st.session_state.messages:
+                        if m["role"] != "model": history_gemini.append({"role": "user", "parts": [m["content"]]})
+                        else: history_gemini.append({"role": "model", "parts": [m["content"]]})
+                    
+                    chat = model.start_chat(history=history_gemini[:-1])
+                    response = chat.send_message(prompt_to_process)
+                    response_text = response.text
 
                     st.markdown(response_text, unsafe_allow_html=True) 
                     st.session_state.messages.append({"role": "model", "content": response_text})
