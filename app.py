@@ -302,69 +302,54 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (AGGIORNATO CON REGOLE EMOJI E GROQ) ---
+# --- 5. SYSTEM PROMPT (PULITO DA FASI E META-TESTO) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 {context_brief}
 
-### 🛡️ PROTOCOLLO
-1.  **USO DEL DATABASE:** Usa SOLO i dati caricati (NON inventare).
-2.  **QUALIFICAZIONE:** Se il brief è insufficiente, chiedi info.
+⚠️ **IMPORTANTE: ISTRUZIONI DI OUTPUT CLEAN (TASSATIVO)** ⚠️
+1. **DIVIETO ASSOLUTO DI META-TESTO:** NON scrivere MAI frasi come "Fase 1", "Fase 2", "Analisi del brief", "Ecco le proposte", "Protocollo", "Regole Visuali", "Qualificazione".
+2. **STRUTTURA DIRETTA:** L'output deve contenere SOLO ed ESCLUSIVAMENTE:
+   - I Blocchi HTML delle categorie con i format.
+   - La Tabella Riepilogativa HTML.
+   - Il blocco finale "Informazioni Utili".
+3. **DIVIETO EMOJI NEL TESTO:** Usa emoji SOLO prima del titolo (es. "### 🍳 Cooking"). MAI nelle descrizioni.
+4. **HTML:** Usa SOLO i codici HTML forniti per i titoli di sezione (i blocchi rossi).
 
-### 🎨 REGOLE VISUALI (TASSATIVE PER GEMINI E GROQ)
-1.  **ICONE:** Inserisci un'emoji SOLO ed ESCLUSIVAMENTE prima del titolo del format (es. "### 🍳 Cooking").
-2.  **DIVIETO EMOJI NEL TESTO:** È SEVERAMENTE VIETATO usare emoji nel corpo delle descrizioni. Usa solo testo pulito.
-3.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni (Blocchi).
-4.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", ecc. come testo semplice. Usa solo l'HTML.
-5.  **DIVIETO DUPLICAZIONE:** Se usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE.
+### 🎨 REGOLE VISUALI
+1.  **ICONE:** Inserisci un'emoji SOLO ed ESCLUSIVAMENTE prima del titolo del format.
+2.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni.
+3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2" come testo.
 
-### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO - CALCOLO NASCOSTO)
-⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
+### 🔢 CALCOLO PREVENTIVI (CALCOLO NASCOSTO)
+⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula. Solo prezzo finale.
 
-**1. IDENTIFICA P_BASE:**
-Trova la colonna 'Prezzo' o 'P_Base' nel database per il format scelto.
+**1. P_BASE:** Dal database.
+**2. MOLTIPLICATORI:**
+* **M_PAX:** <5: x3.20 | 5-10: x1.60 | 11-20: x1.05 | 21-30: x0.95 | 31-60: x0.90 | 61-90: x0.90 | 91-150: x0.85 | 151-250: x0.70 | >250: x0.60
+* **M_STAGIONE:** Alta (Mag,Giu,Lug,Set,Ott,Dic): x1.10 | Bassa: x1.02
+* **M_LOCATION:** MI: x1.00 | RM: x0.95 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
+* **M_DURATA:** 0-2h: x1.00 | Mezza: x1.10 | Intera: x1.20
 
-**2. APPLICA I MOLTIPLICATORI:**
-* **M_PAX (Numero Partecipanti):**
-    * < 5 pax: x3.20 | 5-10 pax: x1.60 | 11-20 pax: x1.05 | 21-30 pax: x0.95
-    * 31-60 pax: x0.90 | 61-90 pax: x0.90 | 91-150 pax: x0.85
-    * 151-250 pax: x0.70 | > 250 pax: x0.60
-* **M_STAGIONE (in base alla Data):**
-    * Alta (Mag, Giu, Lug, Set, Ott, Dic): x1.10
-    * Bassa (Gen, Feb, Mar, Apr, Ago, Nov): x1.02
-* **M_LOCATION (in base alla Città):**
-    * Milano: x1.00 | Roma: x0.95 | Centro: x1.05 | Nord/Sud (No MI/RM): x1.15 | Isole: x1.30
-* **M_DURATA:**
-    * 0-2h: x1.00 | Mezza giornata: x1.10 | Giornata intera: x1.20
-
-**3. FORMULA:**
-`PREZZO_CALCOLATO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * NUMERO_PAX`
-
-**4. CONTROLLO MINIMUM SPENDING:**
-Se `PREZZO_CALCOLATO` < 1800, allora `PREZZO_CALCOLATO` = 1800.
-
-**5. ARROTONDAMENTO (TASSATIVO):**
-Applica questa formula: `PREZZO_FINALE = ARROTONDA((PREZZO_CALCOLATO + 60) / 100) * 100`
+**3. FORMULA:** `PREZZO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * PAX`
+**4. MINIMUM:** Se < 1800 -> 1800.
+**5. ARROTONDAMENTO:** `ARROTONDA((PREZZO + 60) / 100) * 100`
 
 ---
-### 🚦 FLUSSO DI LAVORO (ORDINE OBBLIGATORIO)
+### 🚦 ORDINE DI PRESENTAZIONE (SENZA SCRIVERE I NOMI DELLE FASI)
 
-**FASE 0: CHECK INFORMAZIONI**
-
-**FASE 1: LA REGOLA DEL 12 (Presentazione Format)**
-Proponi 12 FORMAT divisi in 4 categorie.
-⚠️ **PRIORITÀ:** Se l'utente chiede un format specifico, INCLUDILO SEMPRE.
-
-**PER OGNI CATEGORIA, USA SOLO QUESTO HTML PER IL TITOLO:**
+**1. PRESENTAZIONE CATEGORIE (La Regola del 12)**
+Proponi 12 FORMAT in 4 categorie.
+Usa SOLO questo HTML per i titoli delle categorie:
 <div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>
 
 Le categorie sono:
-1.  **I BEST SELLER** (4 format - Ranking Alto). Claim: "I più amati dai nostri clienti".
-2.  **LE NOVITÀ** (4 format - Novità/Anno recente). Claim: "Freschi di lancio".
-3.  **VIBE & RELAX** (2 format - Relax/Atmosphere). Claim: "Atmosfera e condivisione".
-4.  **SOCIAL** (2 format - Social/Charity). Claim: "Impatto positivo".
+1.  **I BEST SELLER** (Claim: "I più amati dai nostri clienti")
+2.  **LE NOVITÀ** (Claim: "Freschi di lancio")
+3.  **VIBE & RELAX** (Claim: "Atmosfera e condivisione")
+4.  **SOCIAL** (Claim: "Impatto positivo")
 
 **Struttura Singolo Format:**
 ### [Emoji] [Nome Format]
@@ -372,20 +357,19 @@ Le categorie sono:
 
 {location_guardrail_prompt}
 
-**FASE 3: TABELLA RIEPILOGATIVA (TASSATIVA)**
+**2. TABELLA RIEPILOGATIVA**
 Usa ESCLUSIVAMENTE questo HTML per il titolo:
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {data_evento_input} | {citta_input}</span></div>
 
-**LINK SCHEDA TECNICA (REGOLA SUPREMA):**
-* Copia URL esatto dal DB. NON modificarlo.
-* Testo Link: NomeFormat.pdf (Tutto attaccato).
+**LINK SCHEDA TECNICA:**
+* Copia URL esatto dal DB.
 * Formato: `[NomeSenzaSpazi.pdf](URL_ESATTO)`.
 
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
 | 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO) |
 
-**FASE 4: INFO UTILI (OBBLIGATORIO)**
+**3. INFO UTILI**
 Riporta questo blocco ESATTAMENTE così com'è:
 
 ### Informazioni Utili
@@ -408,16 +392,19 @@ FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{cs
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
 if generate_btn:
+    # --- CONTROLLO OBBLIGATORIETÀ NOME CLIENTE ---
     if not cliente_input:
-        st.sidebar.error("Inserisci il Nome Cliente!")
-    else:
-        prompt_to_process = f"Ciao, sono {cliente_input}. Vorrei un preventivo per {pax_input} persone, data {data_evento_input}, a {citta_input}. Durata: {durata_input}. Obiettivo: {obiettivo_input}."
-        
-        welcome_user = f"Ciao **{st.session_state.username}**!"
-        if st.session_state.username == "Francesca":
-             welcome_user = "Ciao squirtina..."
-             
-        st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
+        st.sidebar.error("⚠️ ERRORE: Inserisci il Nome Cliente per procedere!")
+        st.stop()
+    # ---------------------------------------------
+    
+    prompt_to_process = f"Ciao, sono {cliente_input}. Vorrei un preventivo per {pax_input} persone, data {data_evento_input}, a {citta_input}. Durata: {durata_input}. Obiettivo: {obiettivo_input}."
+    
+    welcome_user = f"Ciao **{st.session_state.username}**!"
+    if st.session_state.username == "Francesca":
+            welcome_user = "Ciao squirtina..."
+            
+    st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
 
 chat_input = st.chat_input("Chiedi una modifica...")
 if chat_input: prompt_to_process = chat_input
