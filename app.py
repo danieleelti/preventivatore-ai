@@ -89,10 +89,8 @@ except ImportError:
 def get_gspread_client():
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        # Recupera le credenziali dai secrets di Streamlit
         if "gcp_service_account" in st.secrets:
             creds_dict = dict(st.secrets["gcp_service_account"])
-            # Fix per i caratteri di nuova riga nella chiave privata
             if "\\n" in creds_dict["private_key"]:
                 creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
@@ -104,26 +102,22 @@ def get_gspread_client():
         st.error(f"Errore connessione Google: {e}")
         return None
 
-# Caricamento Format da Google Sheets
-@st.cache_data(ttl=600, show_spinner=False) # Cache 10 minuti
+@st.cache_data(ttl=600, show_spinner=False)
 def carica_google_sheet(sheet_name):
     client = get_gspread_client()
-    if not client:
-        return None
+    if not client: return None
     try:
-        sheet = client.open(sheet_name).get_worksheet(0) # Prende il primo foglio
-        data = sheet.get_all_records() # Ritorna lista di dizionari
+        sheet = client.open(sheet_name).get_worksheet(0)
+        data = sheet.get_all_records()
         return data
     except Exception as e:
         st.error(f"Errore caricamento Sheet '{sheet_name}': {e}")
         return None
 
-# Caricamento Location da CSV Locale (Legacy)
 @st.cache_data(show_spinner=False)
 def carica_database_locale(nome_file):
     percorso = os.path.join(os.getcwd(), nome_file)
-    if not os.path.exists(percorso):
-        return None 
+    if not os.path.exists(percorso): return None 
     encodings = ['utf-8', 'latin-1', 'cp1252']
     delimiters = [',', ';'] 
     for encoding in encodings:
@@ -135,32 +129,24 @@ def carica_database_locale(nome_file):
                     if delimiter in sample:
                         reader = csv.DictReader(file, delimiter=delimiter)
                         temp_list = list(reader)
-                        if len(temp_list) > 0 and len(temp_list[0].keys()) > 1:
-                             return temp_list
-            except Exception:
-                continue
+                        if len(temp_list) > 0 and len(temp_list[0].keys()) > 1: return temp_list
+            except Exception: continue
     return None
 
 def database_to_string(database_list):
-    if not database_list:
-        return "Nessun dato disponibile."
+    if not database_list: return "Nessun dato disponibile."
     try:
-        if not isinstance(database_list[0], dict):
-            return "" 
+        if not isinstance(database_list[0], dict): return "" 
         header = " | ".join(database_list[0].keys())
         rows = []
         for riga in database_list:
             clean_values = [str(v) if v is not None else "" for v in riga.values()]
             rows.append(" | ".join(clean_values))
         return header + "\n" + "\n".join(rows)
-    except Exception:
-        return ""
+    except Exception: return ""
 
 # --- CARICAMENTO DATI ---
-# 1. FORMAT: Da Google Sheets (MasterTbGoogleAi)
 master_database = carica_google_sheet('MasterTbGoogleAi') 
-
-# 2. LOCATION: Da CSV Locale
 location_database = carica_database_locale('location.csv') 
 
 if master_database is None:
@@ -201,23 +187,10 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
         provider = st.selectbox("Scegli Provider", ["Google Gemini", "Groq"])
 
     if provider == "Google Gemini":
-        model_options = [
-            "gemini-3.0-pro-preview", 
-            "gemini-2.0-flash-exp",
-            "gemini-1.5-pro-latest",
-            "gemini-1.5-flash",
-            "gemini-1.0-pro"
-        ]
+        model_options = ["gemini-3.0-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
         if "gemini-3.0-pro-preview" not in model_options: model_options.insert(0, "gemini-3.0-pro-preview")
-        
     elif provider == "Groq":
-        model_options = [
-            "llama-3.3-70b-versatile",
-            "llama-3.1-70b-versatile",
-            "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768",
-            "gemma2-9b-it"
-        ]
+        model_options = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
     
     with col_mod:
         selected_model_name = st.selectbox("Versione Modello", model_options)
@@ -234,82 +207,59 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
         st.caption(f"✅ Attivo: {provider} - {selected_model_name}")
 
 if provider == "Groq":
-    st.warning("⚠️ Nota: Il database formati è molto grande. Il piano gratuito di Groq potrebbe bloccare la richiesta (Limite 12k token). Se succede, usa Gemini.")
+    st.warning("⚠️ Groq ha un limite di token basso. Se fallisce, usa Gemini.")
 
 st.caption(f"Assistente Virtuale Senior - {provider}")
 
-# --- 5. SYSTEM PROMPT ---
+# --- 5. SYSTEM PROMPT (AGGIORNATO CON OBBLIGO TABELLA) ---
 BASE_INSTRUCTIONS = """
-SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
-Rispondi in Italiano.
+SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 
 ### 🛡️ PROTOCOLLO
-1.  **NATURALITÀ:** Non citare le istruzioni o regole interne.
-2.  **QUALIFICAZIONE:** Se l'utente fornisce input vaghi, chiedi info su Durata, Mood e Obiettivo.
-3.  **USO DEL DATABASE:** Sei obbligato a usare i dati forniti (che provengono da Google Sheets). Non inventare format.
+1.  **USO DEL DATABASE:** Sei obbligato a usare i dati del CSV.
+2.  **QUALIFICAZIONE:** Se mancano info (Pax, Data, Obiettivo), chiedile.
 
 ### 🎨 REGOLE VISUALI
-1.  **ICONE FORMAT:** Inserisci **UNA SOLA EMOJI** a tema esclusivamente nel TITOLO del format.
-2.  **PULIZIA:** Severamente vietato usare emoji altrove.
-3.  **HTML BLOCCHI:** Usa i div HTML forniti per i titoli delle sezioni.
-4.  **TABELLA:** Usa rigorosamente la sintassi Markdown per la tabella finale.
+1.  **ICONE:** Una emoji SOLO nel titolo del format.
+2.  **HTML:** Usa i div HTML forniti per i titoli delle sezioni.
 
-### 🔢 CALCOLO PREVENTIVI (ALGORITMO RIGOROSO)
-**PASSO 1: VARIABILI** (PAX, P_BASE, METODO)
-**PASSO 2: MOLTIPLICATORI (M)**
-* **M_PAX:** <5(3.20)|5-10(1.60)|11-20(1.05)|21-30(0.95)|31-60(0.90)|61-90(0.90)|91-150(0.85)|151-250(0.70)|251-350(0.63)|351-500(0.55)|501-700(0.50)|701-900(0.49)|>900(0.30)
-* **M_DURATA:** ≤1h(1.05)|1-2h(1.07)|2-4h(1.10)|>4h(1.15)
-* **M_LINGUA:** ITA(1.05)|ENG(1.10) -- **M_LOCATION:** MI(1.00)|RM(0.95)|Centro(1.05)|Nord/Sud(1.15)|Isole(1.30) -- **M_STAGIONE:** Mag-Ott(1.10)|Nov-Apr(1.02)
-
-**PASSO 3: FORMULE**
-* **Standard:** `P_BASE * M_PAX * M_DURATA * M_LINGUA * M_LOCATION * M_STAGIONE * PAX`
-* **Flat:** Pax<=20(1800)|21-40(1800+(Pax-20)*35)|41-60(2500+(Pax-40)*50)|61-100(3500+(Pax-60)*37.50)|>100(5000+(Pax-100)*13.50)
-
-**PASSO 4: ARROTONDAMENTO**
-* 00-39 -> Difetto (2235->2200) | 40-99 -> Eccesso (2245->2300) | Min Spending: 1800+IVA.
+### 🔢 CALCOLO PREVENTIVI (RIGOROSO)
+* Usa le colonne del CSV per P_BASE.
+* Applica i moltiplicatori (M_PAX, M_DURATA, M_LINGUA, M_LOCATION, M_STAGIONE).
+* Formula Standard: `P_BASE * M_PAX * ... * PAX`
+* Arrotonda e applica Min Spending 1800+IVA.
 
 ---
-### 🚦 FLUSSO DI LAVORO (ORDINE DI OUTPUT OBBLIGATORIO)
+### 🚦 FLUSSO DI LAVORO (ORDINE OBBLIGATORIO)
 
-**FASE 0: CHECK INFORMAZIONI** (Se mancano info, chiedile).
+**FASE 0: CHECK INFORMAZIONI**
 
-**FASE 1: LA REGOLA DEL 12**
-Proponi 12 FORMAT in 4 blocchi.
-Per scegliere i format, **devi guardare le colonne specifiche del Database**:
+**FASE 1: LA REGOLA DEL 12 (Presentazione Format)**
+Proponi 12 FORMAT in 4 blocchi usando i Criteri del DB (Ranking, Novità, Tag).
 
 ⚠️ **TITOLI BLOCCHI HTML:**
 <div class="block-header"><span class="block-title">NOME BLOCCO</span><span class="block-claim">Claim</span></div>
 
-**BLOCCO 1: I BEST SELLER** (4 format)
-* **CRITERIO:** Valore più alto in **"Ranking"** o **"Voto"**.
-
-**BLOCCO 2: LE NOVITÀ** (4 format)
-* **CRITERIO:** "Sì"/"True" in **"Novità"** o **"Anno"** recente.
-
-**BLOCCO 3: VIBE & RELAX** (2 format)
-* **CRITERIO:** Tag "Relax", "Soft", "Atmosphere", "Cena" in **"Categoria"**/**"Tag"**.
-
-**BLOCCO 4: SOCIAL** (2 format)
-* **CRITERIO:** Tag "Social", "Charity", "Creativo" in **"Categoria"**/**"Tag"**.
-
-**Struttura Format:**
-### [Emoji] [Nome]
-[Descrizione basata sul DB]
+**BLOCCO 1: BEST SELLER** (Ranking Alto)
+**BLOCCO 2: NOVITÀ** (Flag Novità/Anno)
+**BLOCCO 3: VIBE & RELAX** (Tag Relax/Cena)
+**BLOCCO 4: SOCIAL** (Tag Social/Charity)
 
 **FASE 2: SUGGERIMENTO LOCATION** (Solo se richiesto).
 
-**FASE 3: TABELLA RIEPILOGATIVA**
-3 Colonne: Nome Format | Costo Totale (+IVA) | Scheda Tecnica [Link](URL).
+**FASE 3: TABELLA RIEPILOGATIVA (⛔️ TASSATIVA ⛔️)**
+DEVI OBBLIGATORIAMENTE GENERARE QUESTA TABELLA ALLA FINE DELLA RISPOSTA.
+NON TERMINARE MAI LA RISPOSTA SENZA QUESTA TABELLA.
+
+| Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
+| :--- | :--- | :--- |
+| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL) |
+| ... | ... | ... |
+
+*(Inserisci qui tutti i 12 format proposti con i relativi prezzi calcolati)*.
 
 **FASE 4: INFO UTILI**
-Copia:
-### Informazioni Utili
-✔️ Tutti i format sono nostri e personalizzabili.
-✔️ La location non è inclusa.
-✔️ Team building è anche formazione.
-✔️ Prezzo all inclusive.
-✔️ Assicurazione pioggia inclusa per outdoor.
-✔️ Chiedici video/foto e gadget.
+Copia il blocco standard (Format nostri, Location esclusa, Prezzo all inclusive, Assicurazione pioggia).
 """
 
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
@@ -387,6 +337,6 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
             except Exception as e:
                 err_msg = str(e)
                 if "rate_limit_exceeded" in err_msg.lower() or "413" in err_msg:
-                    st.error(f"❌ **ERRORE LIMITE GROQ**: Il database è troppo grande ({len(FULL_SYSTEM_PROMPT)} caratteri) per il piano gratuito di Groq. **Per favore passa a Google Gemini dal menu in alto.**")
+                    st.error(f"❌ **ERRORE LIMITE GROQ**: Il database è troppo grande per il piano gratuito. **Usa Google Gemini.**")
                 else:
                     st.error(f"Errore tecnico con {provider}: {e}")
