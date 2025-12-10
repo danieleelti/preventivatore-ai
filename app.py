@@ -162,6 +162,7 @@ if not st.session_state.authenticated:
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
+                st.session_state.messages = [] # RESET TASSATIVO CHAT AL LOGIN
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -172,9 +173,17 @@ if "enable_locations_state" not in st.session_state:
     st.session_state.enable_locations_state = False 
 if "total_tokens_used" not in st.session_state:
     st.session_state.total_tokens_used = 0
-if "messages" not in st.session_state:
+
+if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
-    st.session_state.messages.append({"role": "model", "content": f"Ciao **{st.session_state.username}**! Usa la barra laterale a sinistra per compilare i dati."})
+    
+    # --- LOGICA SALUTO INIZIALE ---
+    if st.session_state.username == "Francesca":
+        welcome_msg = "Ciao squirtina..." 
+    else:
+        welcome_msg = f"Ciao **{st.session_state.username}**! Usa la barra laterale a sinistra per compilare i dati."
+        
+    st.session_state.messages.append({"role": "model", "content": welcome_msg})
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -301,8 +310,22 @@ Prima della tabella:
 | :--- | :--- | :--- |
 | 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO) |
 
-**FASE 4: INFO UTILI**
-Copia il blocco standard (Format nostri, Location esclusa, Prezzo all inclusive, Assicurazione pioggia).
+**FASE 4: INFO UTILI (OBBLIGATORIO - COPIA ESATTA)**
+Copia esattamente questo blocco alla fine:
+
+### Informazioni Utili
+
+✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+
+✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+
+✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+
+✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+
+✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+
+✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
 if not location_instructions_block:
@@ -318,7 +341,13 @@ if generate_btn:
         st.sidebar.error("Inserisci il Nome Cliente!")
     else:
         prompt_to_process = f"Ciao, sono {cliente_input}. Vorrei un preventivo per {pax_input} persone, data {data_evento_input}, a {citta_input}. Durata: {durata_input}. Obiettivo: {obiettivo_input}."
-        st.session_state.messages = [{"role": "model", "content": f"Ciao **{st.session_state.username}**! Elaboro la proposta per **{cliente_input}**."}]
+        
+        # Reset messaggio anche qui per sicurezza
+        welcome_user = f"Ciao **{st.session_state.username}**!"
+        if st.session_state.username == "Francesca":
+             welcome_user = "Ciao squirtina..."
+             
+        st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
 
 chat_input = st.chat_input("Chiedi una modifica...")
 if chat_input: prompt_to_process = chat_input
@@ -396,6 +425,7 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "model
     c1, c2 = st.columns([1, 2])
     with c1:
         if st.button("💾 SALVA SU GOOGLE SHEET", use_container_width=True):
+            # Passiamo l'utente corretto
             if save.salva_preventivo(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
                 st.success(f"✅ Preventivo per {cliente_input} salvato!")
             else:
