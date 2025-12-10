@@ -420,7 +420,7 @@ if generate_btn:
     
     welcome_user = f"Ciao **{st.session_state.username}**!"
     if st.session_state.username == "Francesca":
-            welcome_user = "Ciao squirtina..."
+            welcome_user = "Ciao Frà..."
             
     st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
 
@@ -500,3 +500,4 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "model
             st.success(f"✅ Preventivo per {cliente_input} salvato!")
         else:
             st.error("Errore salvataggio.")
+
