@@ -83,16 +83,17 @@ st.markdown("""
         border-bottom: 1px solid #eee !important;
     }
     
-    /* Sidebar Button */
+    /* Stile Bottoni Sidebar */
     .stButton button {
-        background-color: #ff4b4b !important;
-        color: white !important;
+        width: 100%;
         font-weight: bold !important;
         border: none !important;
-        width: 100%;
-        height: 50px;
-        font-size: 16px !important;
-        margin-top: 10px;
+        height: 45px;
+    }
+    /* Bottone Genera (Rosso) - Targettizzato tramite gerarchia */
+    div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:nth-child(10) button {
+        background-color: #ff4b4b !important;
+        color: white !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -103,9 +104,19 @@ try:
 except ImportError:
     locations_module = None
 
-# --- FUNZIONE CALLBACK PER ABILITARE LOCATION (Mantenuta per coerenza tecnica) ---
+# --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
+
+def reset_preventivo():
+    """Resetta la chat e svuota i campi di input."""
+    st.session_state.messages = []
+    st.session_state.total_tokens_used = 0
+    # Svuota i widget tramite le loro chiavi
+    keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
+    for key in keys_to_clear:
+        if key in st.session_state:
+            st.session_state[key] = ""
 
 # --- 2. GESTIONE DATABASE (GOOGLE SHEETS) ---
 def get_gspread_client():
@@ -231,13 +242,23 @@ with st.sidebar:
     st.markdown("---")
     
     st.subheader("📝 Dati Brief")
-    cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA")
+    
+    # PULSANTE NUOVO PREVENTIVO (Appare solo se c'è storia)
+    # len > 1 perché c'è sempre il messaggio di benvenuto
+    if len(st.session_state.messages) > 1:
+        if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
+            reset_preventivo()
+            st.rerun()
+        st.markdown("---")
+
+    # WIDGET CON CHIAVI PER IL RESET
+    cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
     col_pax, col_data = st.columns(2)
-    with col_pax: pax_input = st.text_input("N. Pax", placeholder="50")
-    with col_data: data_evento_input = st.text_input("Data", placeholder="12 Maggio")
-    citta_input = st.text_input("Città / Location", placeholder="Milano / Villa Reale")
-    durata_input = st.text_input("Durata Attività", placeholder="es. 2-3 ore")
-    obiettivo_input = st.text_area("Obiettivo / Mood / Note", placeholder="Descrivi l'obiettivo...", height=100)
+    with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
+    with col_data: data_evento_input = st.text_input("Data", placeholder="12 Maggio", key="wdg_data")
+    citta_input = st.text_input("Città / Location", placeholder="Milano / Villa Reale", key="wdg_citta")
+    durata_input = st.text_input("Durata Attività", placeholder="es. 2-3 ore", key="wdg_durata")
+    obiettivo_input = st.text_area("Obiettivo / Mood / Note", placeholder="Descrivi l'obiettivo...", height=100, key="wdg_obiettivo")
 
     st.markdown("###")
     generate_btn = st.button("🚀 GENERA PREVENTIVO", type="primary")
@@ -259,14 +280,27 @@ with st.sidebar:
 
 # --- GESTIONE LOGICA LOCATION ---
 location_instructions_block = ""
+location_guardrail_prompt = ""
+
 if use_location_db:
     with st.spinner("Caricamento Location..."):
         location_database = carica_google_sheet('LocationGoogleAi')
         if location_database and locations_module:
             loc_db_string = database_to_string(location_database)
             location_instructions_block = locations_module.get_location_instructions(loc_db_string)
+            location_guardrail_prompt = f"FASE 2: SUGGERIMENTO LOCATION\n{location_instructions_block}"
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
+else:
+    # Se disabilitato, istruisco l'AI a saltare completamente.
+    location_guardrail_prompt = """
+    FASE 2: SUGGERIMENTO LOCATION
+    ⚠️ ISTRUZIONE TASSATIVA: IL DATABASE LOCATION È SPENTO.
+    NON SCRIVERE NULLA IN QUESTA FASE.
+    NON INVENTARE LOCATION.
+    NON SCRIVERE 'NESSUNA LOCATION TROVATA'.
+    SALTA DIRETTAMENTE ALLA TABELLA RIEPILOGATIVA.
+    """
 
 # --- 5. SYSTEM PROMPT ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
@@ -343,11 +377,11 @@ Le categorie sono:
 
 **Struttura Singolo Format:**
 ### [Emoji] [Nome Format]
-[Descrizione basata sul DB. Max 2-3 righe. Inizia con una emoji contestualizzata.]
+[Descrizione di max 2-3 righe accattivanti. Inizia se possibile con una emoji contestualizzata.]
+
+{location_guardrail_prompt}
 
 **FASE 3: TABELLA RIEPILOGATIVA (TASSATIVA)**
-(NB: Salta la fase suggerimento location se non richiesto o se DB spento).
-
 Usa questo HTML per il titolo:
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {data_evento_input} | {citta_input}</span></div>
 
@@ -378,8 +412,7 @@ Riporta questo blocco ESATTAMENTE così com'è:
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-# Se location_instructions_block è vuoto (o spento), non mettiamo nulla che riguardi location nel prompt
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
