@@ -162,7 +162,7 @@ if not st.session_state.authenticated:
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
-                st.session_state.messages = [] # RESET TASSATIVO CHAT AL LOGIN
+                st.session_state.messages = [] 
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -177,7 +177,6 @@ if "total_tokens_used" not in st.session_state:
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
     
-    # --- LOGICA SALUTO INIZIALE ---
     if st.session_state.username == "Francesca":
         welcome_msg = "Ciao squirtina..." 
     else:
@@ -287,9 +286,20 @@ Devi arrotondare il totale usando questa logica matematica:
 
 **FASE 0: CHECK INFORMAZIONI**
 
-**FASE 1: LA REGOLA DEL 12**
+**FASE 1: LA REGOLA DEL 12 (Presentazione Format)**
+⚠️ **REGOLA D'ORO:** Se l'utente ha chiesto esplicitamente un format (es. "Voglio il Cooking"), **INCLUDILO OBBLIGATORIAMENTE**, anche se non rispetta le regole di ranking o categoria qui sotto. Dagli la priorità assoluta.
+
 Proponi 12 FORMAT divisi in 4 blocchi (4 Best Seller, 4 Novità, 2 Vibe, 2 Social).
 Usa HTML per i titoli blocchi: <div class="block-header">...</div>
+
+* **BLOCCO 1: I BEST SELLER** (4 format con Ranking più alto).
+* **BLOCCO 2: LE NOVITÀ** (4 format flaggati come Novità o anno corrente).
+* **BLOCCO 3: VIBE & RELAX** (2 format con tag Relax/Soft/Cena).
+* **BLOCCO 4: SOCIAL** (2 format con tag Social/Charity).
+
+**Struttura Format:**
+### [Emoji] [Nome]
+[Descrizione basata sul DB]
 
 **FASE 2: SUGGERIMENTO LOCATION**
 {location_instructions_block}
@@ -342,7 +352,6 @@ if generate_btn:
     else:
         prompt_to_process = f"Ciao, sono {cliente_input}. Vorrei un preventivo per {pax_input} persone, data {data_evento_input}, a {citta_input}. Durata: {durata_input}. Obiettivo: {obiettivo_input}."
         
-        # Reset messaggio anche qui per sicurezza
         welcome_user = f"Ciao **{st.session_state.username}**!"
         if st.session_state.username == "Francesca":
              welcome_user = "Ciao squirtina..."
@@ -425,7 +434,6 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "model
     c1, c2 = st.columns([1, 2])
     with c1:
         if st.button("💾 SALVA SU GOOGLE SHEET", use_container_width=True):
-            # Passiamo l'utente corretto
             if save.salva_preventivo(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
                 st.success(f"✅ Preventivo per {cliente_input} salvato!")
             else:
