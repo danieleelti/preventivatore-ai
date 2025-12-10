@@ -290,7 +290,7 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (VERSIONE IBRIDA PERFETTA GEMINI+GROQ) ---
+# --- 5. SYSTEM PROMPT (AGGIORNATO CON REGOLE 4+4+2+2 E TABELLA IVA) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
@@ -311,22 +311,22 @@ Il tuo compito è creare un preventivo HTML perfettamente formattato per Streaml
 **FASE 1: INTRODUZIONE**
 Scrivi un paragrafo di 3-4 righe (testo normale). Saluta il cliente ({cliente_input}), cita i dettagli del brief e usa un tono caldo e professionale.
 
-**FASE 2: LA REGOLA DEL 12 (Le 4 Categorie)**
-Devi presentare 12 format divisi in 4 categorie.
+**FASE 2: LA REGOLA DEL 12 (4+4+2+2)**
+Devi presentare ESATTAMENTE 12 format divisi in 4 categorie, seguendo questa distribuzione TASSATIVA:
+1.  **I BEST SELLER** (4 format)
+2.  **LE NOVITÀ** (4 format)
+3.  **VIBE & RELAX** (2 format)
+4.  **SOCIAL** (2 format)
+
 Per OGNI categoria, devi usare ESATTAMENTE questo codice HTML come titolo:
 `<div class="block-header"><span class="block-title">NOME CATEGORIA</span><span class="block-claim">CLAIM</span></div>`
-
-Le categorie sono TASSATIVE:
-1.  **I BEST SELLER** (Claim: "I più amati dai nostri clienti")
-2.  **LE NOVITÀ** (Claim: "Freschi di lancio")
-3.  **VIBE & RELAX** (Claim: "Atmosfera e condivisione")
-4.  **SOCIAL** (Claim: "Impatto positivo")
 
 *Regole Format:* Emoji solo nel titolo (es. "### 🍳 Cooking"). Descrizione pulita senza emoji.
 
 **FASE 3: TABELLA RIEPILOGATIVA**
 Titolo HTML: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {citta_input}</span></div>`
 Tabella Markdown standard con link al PDF.
+**IMPORTANTE:** L'intestazione della colonna prezzi DEVE ESSERE: `Costo Totale (+IVA)`.
 
 **FASE 4: INFO UTILI**
 Copia esattamente questo blocco:
@@ -368,16 +368,16 @@ Descrizione del format cooking...
 ### 🕵️ Urban Game AI
 Descrizione del format...
 
-(Proseguire con tutte le categorie...)
+(Proseguire con tutte le categorie rispettando i numeri 4-4-2-2)
 
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: 50 pax | Milano</span></div>
 
-| Nome Format | Costo | PDF |
+| Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 🍳 Cooking | € 2.400 | [Link](...) |
+| 🍳 Cooking | € 2.400,00 | [Link](...) |
 
 ### Informazioni Utili
-✔️ **Tutti i format...**
+✔️ **Tutti i format sono nostri**...
 (Eccetera)
 """
 
@@ -400,7 +400,7 @@ if generate_btn:
     
     welcome_user = f"Ciao **{st.session_state.username}**!"
     if st.session_state.username == "Francesca":
-            welcome_user = "Ciao squirtina..."
+            welcome_user = "Ciao Fra..."
             
     st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
 
