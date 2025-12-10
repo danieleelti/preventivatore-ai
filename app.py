@@ -75,6 +75,14 @@ st.markdown("""
     div[data-testid="stChatMessage"] td:nth-child(3) { width: 35%; }
     div[data-testid="stChatMessage"] a { color: #1a73e8 !important; text-decoration: underline !important; }
     div[data-testid="stChatMessage"] ul { list-style-type: none !important; padding-left: 0 !important; }
+    
+    /* Stile bottone attivazione location */
+    .stButton button {
+        background-color: #ff4b4b !important;
+        color: white !important;
+        font-weight: bold !important;
+        border: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -154,6 +162,12 @@ if not st.session_state.authenticated:
 # --- 4.b CONFIGURAZIONE AI ---
 st.title("🦁 💰 FATTURAGE 💰 🦁")
 
+# Inizializza stato location e contatore token
+if "enable_locations_state" not in st.session_state:
+    st.session_state.enable_locations_state = False # Default spento
+if "total_tokens_used" not in st.session_state:
+    st.session_state.total_tokens_used = 0
+
 # Variabile per le istruzioni location (vuota di default)
 location_instructions_block = ""
 
@@ -173,7 +187,11 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
     
     # --- CHECKBOX PER CARICAMENTO LOCATION ---
     st.markdown("---")
-    use_location_db = st.checkbox("🏰 **Abilita Database Location** (Attiva solo se richiesto, rallenta l'avvio)", value=False)
+    # Collegato allo session_state tramite key
+    use_location_db = st.checkbox(
+        "🏰 **Abilita Database Location** (Attiva solo se richiesto)", 
+        key="enable_locations_state"
+    )
     
     # LOGICA DI CARICAMENTO CONDIZIONALE
     if use_location_db:
@@ -290,9 +308,15 @@ Devi riportare ESATTAMENTE questo blocco, inclusi gli emoji:
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-# Se location_instructions_block è vuoto (DB spento), diamo istruzione di SILENZIO ASSOLUTO.
+# NOTA: Gestione Silenziosa del Guardrail
 if not location_instructions_block:
-    location_guardrail_silent = "ISTRUZIONE PER FASE 2: NON SCRIVERE NULLA. SALTA QUESTA FASE. VAI DIRETTAMENTE ALLA FASE 3."
+    location_guardrail_silent = """
+    ISTRUZIONE CRITICA FASE 2 (LOCATION):
+    1. DATABASE SPENTO. NON ESEGUIRE QUESTA FASE.
+    2. NON CERCARE LOCATION ONLINE. NON INVENTARE NOMI.
+    3. PASSA DIRETTAMENTE ALLA FASE 3.
+    4. NON SCRIVERE NESSUN AVVISO TIPO "DATABASE SPENTO". SILENZIO ASSOLUTO.
+    """
     FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_guardrail_silent)}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
 else:
     FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_instructions_block)}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
@@ -314,8 +338,20 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    # --- CONTROLLO KEYWORD LOCATION (NUOVO) ---
+    # Se l'utente chiede una location ma il DB è spento, mostriamo il bottone di attivazione
+    keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
+    is_location_request = any(k in prompt.lower() for k in keywords_location)
+    
+    if is_location_request and not st.session_state.enable_locations_state:
+        st.info("ℹ️ **Vuoi suggerimenti sulle Location?** Il database è attualmente spento per velocità.")
+        if st.button("🏰 CLICCA QUI PER ATTIVARE IL DATABASE LOCATION"):
+            st.session_state.enable_locations_state = True
+            st.rerun()
+
     if prompt.lower().strip() in ["reset", "nuovo", "cancella", "stop"]:
         st.session_state.messages = []
+        st.session_state.total_tokens_used = 0 
         st.rerun()
 
     with st.chat_message("assistant"):
@@ -327,6 +363,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 
                 response_text = ""
                 token_usage_info = ""
+                current_total_tokens = 0
 
                 # --- GOOGLE GEMINI ---
                 if provider == "Google Gemini":
@@ -351,10 +388,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if response.usage_metadata:
-                        in_tok = response.usage_metadata.prompt_token_count
-                        out_tok = response.usage_metadata.candidates_token_count
-                        tot_tok = response.usage_metadata.total_token_count
-                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
+                        current_total_tokens = response.usage_metadata.total_token_count
+                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
 
                 # --- GROQ ---
                 elif provider == "Groq":
@@ -375,10 +410,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # TOKEN COUNTER
                     if resp.usage:
-                        in_tok = resp.usage.prompt_tokens
-                        out_tok = resp.usage.completion_tokens
-                        tot_tok = resp.usage.total_tokens
-                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
+                        current_total_tokens = resp.usage.total_tokens
+                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
 
                 st.markdown(response_text, unsafe_allow_html=True) 
                 
