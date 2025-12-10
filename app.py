@@ -114,25 +114,6 @@ def carica_google_sheet(sheet_name):
         st.error(f"Errore caricamento Sheet '{sheet_name}': {e}")
         return None
 
-@st.cache_data(show_spinner=False)
-def carica_database_locale(nome_file):
-    percorso = os.path.join(os.getcwd(), nome_file)
-    if not os.path.exists(percorso): return None 
-    encodings = ['utf-8', 'latin-1', 'cp1252']
-    delimiters = [',', ';'] 
-    for encoding in encodings:
-        for delimiter in delimiters:
-            try:
-                with open(percorso, mode='r', encoding=encoding) as file:
-                    sample = file.read(1024)
-                    file.seek(0)
-                    if delimiter in sample:
-                        reader = csv.DictReader(file, delimiter=delimiter)
-                        temp_list = list(reader)
-                        if len(temp_list) > 0 and len(temp_list[0].keys()) > 1: return temp_list
-            except Exception: continue
-    return None
-
 def database_to_string(database_list):
     if not database_list: return "Nessun dato disponibile."
     try:
@@ -145,22 +126,15 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
-# --- CARICAMENTO DATI ---
+# --- CARICAMENTO DATI BASE (SOLO FORMAT) ---
+# Questo viene caricato SEMPRE perché serve per i preventivi
 master_database = carica_google_sheet('MasterTbGoogleAi') 
-location_database = carica_database_locale('location.csv') 
 
 if master_database is None:
     st.error("⚠️ ERRORE CRITICO: Impossibile scaricare il database attività da Google Sheets.")
     st.stop()
 
 csv_data_string = database_to_string(master_database)
-
-# --- 3. COSTRUZIONE DEL CERVELLO (LOCATION) ---
-location_instructions_block = ""
-if locations_module and location_database:
-    loc_db_string = database_to_string(location_database)
-    if loc_db_string:
-        location_instructions_block = locations_module.get_location_instructions(loc_db_string)
 
 # --- 4. CONFIGURAZIONE API E PASSWORD ---
 PASSWORD_SEGRETA = "TeamBuilding2025#"
@@ -181,32 +155,36 @@ if not st.session_state.authenticated:
 # --- 4.b CONFIGURAZIONE AI ---
 st.title("🦁 💰 FATTURAGE 💰 🦁")
 
+# Variabile per le istruzioni location (vuota di default)
+location_instructions_block = ""
+
 with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
     col_prov, col_mod = st.columns(2)
     with col_prov:
         provider = st.selectbox("Scegli Provider", ["Google Gemini", "Groq"])
 
     if provider == "Google Gemini":
-        model_options = [
-            "gemini-3-pro-preview", # CORRETTO: rimosso .0
-            "gemini-2.0-flash-exp",
-            "gemini-1.5-pro-latest",
-            "gemini-1.5-flash",
-            "gemini-1.0-pro"
-        ]
+        model_options = ["gemini-3-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
         if "gemini-3-pro-preview" not in model_options: model_options.insert(0, "gemini-3-pro-preview")
-        
     elif provider == "Groq":
-        model_options = [
-            "llama-3.3-70b-versatile",
-            "llama-3.1-70b-versatile",
-            "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768",
-            "gemma2-9b-it"
-        ]
+        model_options = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
     
     with col_mod:
         selected_model_name = st.selectbox("Versione Modello", model_options)
+    
+    # --- CHECKBOX PER CARICAMENTO LOCATION ---
+    st.markdown("---")
+    use_location_db = st.checkbox("🏰 **Abilita Database Location** (Attiva solo se richiesto, rallenta l'avvio)", value=False)
+    
+    # LOGICA DI CARICAMENTO CONDIZIONALE
+    if use_location_db:
+        with st.spinner("Scaricamento Database Location in corso..."):
+            location_database = carica_google_sheet('LocationGoogleAi')
+            if location_database and locations_module:
+                loc_db_string = database_to_string(location_database)
+                location_instructions_block = locations_module.get_location_instructions(loc_db_string)
+            elif not location_database:
+                st.warning("⚠️ Impossibile caricare le Location.")
     
     api_key = None
     if provider == "Google Gemini":
@@ -229,7 +207,7 @@ BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 
 ### 🛡️ PROTOCOLLO
-1.  **USO DEL DATABASE:** Sei obbligato a usare i dati del CSV.
+1.  **USO DEL DATABASE:** Sei obbligato a usare i dati caricati da Google Sheets.
 2.  **QUALIFICAZIONE:** Se mancano info (Pax, Data, Obiettivo), chiedile.
 
 ### 🎨 REGOLE VISUALI
@@ -237,7 +215,7 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 2.  **HTML:** Usa i div HTML forniti per i titoli delle sezioni.
 
 ### 🔢 CALCOLO PREVENTIVI (RIGOROSO)
-* Usa le colonne del CSV per P_BASE.
+* Usa le colonne del DB per P_BASE.
 * Applica i moltiplicatori (M_PAX, M_DURATA, M_LINGUA, M_LOCATION, M_STAGIONE).
 * Formula Standard: `P_BASE * M_PAX * ... * PAX`
 * Arrotonda e applica Min Spending 1800+IVA.
@@ -258,7 +236,12 @@ Proponi 12 FORMAT in 4 blocchi usando i Criteri del DB (Ranking, Novità, Tag).
 **BLOCCO 3: VIBE & RELAX** (Tag Relax/Cena)
 **BLOCCO 4: SOCIAL** (Tag Social/Charity)
 
-**FASE 2: SUGGERIMENTO LOCATION** (Solo se richiesto).
+**Struttura Format:**
+### [Emoji] [Nome]
+[Descrizione basata sul DB]
+
+**FASE 2: SUGGERIMENTO LOCATION** (SOLO SE RICHIESTO E SE ABILITATO NEL MENU).
+Se l'utente chiede location ma non hai dati (perché il db è spento), consiglia di attivare l'opzione "Abilita Database Location" nel menu in alto.
 
 **FASE 3: TABELLA RIEPILOGATIVA (⛔️ TASSATIVA ⛔️)**
 DEVI OBBLIGATORIAMENTE GENERARE QUESTA TABELLA ALLA FINE DELLA RISPOSTA.
