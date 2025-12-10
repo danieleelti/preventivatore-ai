@@ -93,6 +93,10 @@ try:
 except ImportError:
     locations_module = None
 
+# --- FUNZIONE CALLBACK PER ABILITARE LOCATION ---
+def enable_locations_callback():
+    st.session_state.enable_locations_state = True
+
 # --- 2. GESTIONE DATABASE (GOOGLE SHEETS) ---
 
 def get_gspread_client():
@@ -332,96 +336,103 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
         st.session_state.messages = []
         st.rerun()
 
-    # --- CONTROLLO KEYWORD LOCATION + LOGICA BOTTONE (FUNZIONE CALLBACK) ---
-    keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
-    is_location_request = any(k in prompt.lower() for k in keywords_location)
+# --- LOGICA DI CONTROLLO E GENERAZIONE AI ---
+# Controlliamo se l'ultimo messaggio è dell'utente per innescare la risposta o il blocco
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    last_user_msg = st.session_state.messages[-1]["content"]
     
-    # Se chiede location MA il DB è spento, mostriamo bottone e FERMIAMO l'esecuzione.
+    # 1. CONTROLLO KEYWORD LOCATION
+    keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
+    is_location_request = any(k in last_user_msg.lower() for k in keywords_location)
+    
+    # Variabile Semaforo per decidere se generare o fermarsi
+    should_generate_response = True
+
+    # 2. SE CHIEDE LOCATION MA IL DB È SPENTO -> STOP E BOTTONE
     if is_location_request and not st.session_state.enable_locations_state:
+        should_generate_response = False # Semaforo ROSSO
         with st.chat_message("assistant"):
             st.warning("⚠️ **Il Database Location è spento per massimizzare la velocità.**")
             st.info("Per includere suggerimenti mirati sulle location partner, attiva il database qui sotto:")
             
-            # CALLBACK FUNZIONE per cambiare lo stato PRIMA del rerun
-            def enable_locations_callback():
-                st.session_state.enable_locations_state = True
-            
+            # Bottone collegato alla callback
             st.button("🟢 ATTIVA DATABASE LOCATION E RISPONDI", on_click=enable_locations_callback)
             
-            # Stop impedisce all'AI di rispondere finché non si interagisce con il bottone
-            st.stop()
+            # Non usiamo st.stop() qui per non rompere il layout, ma semplicemente
+            # non entriamo nel blocco di generazione sottostante.
 
-    # --- 3. GENERAZIONE RISPOSTA AI ---
-    with st.chat_message("assistant"):
-        with st.spinner(f"Elaborazione con {provider}..."):
-            try:
-                if not api_key:
-                     st.error("Chiave API mancante.")
-                     st.stop()
-                
-                response_text = ""
-                token_usage_info = ""
+    # 3. SE TUTTO OK (SEMAFORO VERDE) -> GENERA
+    if should_generate_response:
+        with st.chat_message("assistant"):
+            with st.spinner(f"Elaborazione con {provider}..."):
+                try:
+                    if not api_key:
+                         st.error("Chiave API mancante.")
+                         st.stop()
+                    
+                    response_text = ""
+                    token_usage_info = ""
 
-                # --- GOOGLE GEMINI ---
-                if provider == "Google Gemini":
-                    genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel(
-                        model_name=selected_model_name, 
-                        generation_config={"temperature": 0.0},
-                        system_instruction=FULL_SYSTEM_PROMPT,
-                        safety_settings={HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE},
-                    )
-                    
-                    history_gemini = []
-                    for m in st.session_state.messages:
-                        if m["role"] != "model":
-                            history_gemini.append({"role": "user", "parts": [m["content"]]})
-                        else:
-                            history_gemini.append({"role": "model", "parts": [m["content"]]})
-                    
-                    chat = model.start_chat(history=history_gemini[:-1])
-                    response = chat.send_message(prompt)
-                    response_text = response.text
-                    
-                    if response.usage_metadata:
-                        in_tok = response.usage_metadata.prompt_token_count
-                        out_tok = response.usage_metadata.candidates_token_count
-                        tot_tok = response.usage_metadata.total_token_count
-                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
+                    # --- GOOGLE GEMINI ---
+                    if provider == "Google Gemini":
+                        genai.configure(api_key=api_key)
+                        model = genai.GenerativeModel(
+                            model_name=selected_model_name, 
+                            generation_config={"temperature": 0.0},
+                            system_instruction=FULL_SYSTEM_PROMPT,
+                            safety_settings={HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE, HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE},
+                        )
+                        
+                        history_gemini = []
+                        for m in st.session_state.messages:
+                            if m["role"] != "model":
+                                history_gemini.append({"role": "user", "parts": [m["content"]]})
+                            else:
+                                history_gemini.append({"role": "model", "parts": [m["content"]]})
+                        
+                        chat = model.start_chat(history=history_gemini[:-1])
+                        response = chat.send_message(last_user_msg) 
+                        response_text = response.text
+                        
+                        if response.usage_metadata:
+                            in_tok = response.usage_metadata.prompt_token_count
+                            out_tok = response.usage_metadata.candidates_token_count
+                            tot_tok = response.usage_metadata.total_token_count
+                            token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
 
-                # --- GROQ ---
-                elif provider == "Groq":
-                    client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
-                    messages_groq = [{"role": "system", "content": FULL_SYSTEM_PROMPT}]
-                    
-                    recent_messages = st.session_state.messages[-4:] 
-                    for m in recent_messages:
-                        role = "assistant" if m["role"] == "model" else "user"
-                        messages_groq.append({"role": role, "content": m["content"]})
-                    
-                    resp = client.chat.completions.create(
-                        model=selected_model_name,
-                        messages=messages_groq,
-                        temperature=0.0
-                    )
-                    response_text = resp.choices[0].message.content
-                    
-                    if resp.usage:
-                        in_tok = resp.usage.prompt_tokens
-                        out_tok = resp.usage.completion_tokens
-                        tot_tok = resp.usage.total_tokens
-                        token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
+                    # --- GROQ ---
+                    elif provider == "Groq":
+                        client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+                        messages_groq = [{"role": "system", "content": FULL_SYSTEM_PROMPT}]
+                        
+                        recent_messages = st.session_state.messages[-4:] 
+                        for m in recent_messages:
+                            role = "assistant" if m["role"] == "model" else "user"
+                            messages_groq.append({"role": role, "content": m["content"]})
+                        
+                        resp = client.chat.completions.create(
+                            model=selected_model_name,
+                            messages=messages_groq,
+                            temperature=0.0
+                        )
+                        response_text = resp.choices[0].message.content
+                        
+                        if resp.usage:
+                            in_tok = resp.usage.prompt_tokens
+                            out_tok = resp.usage.completion_tokens
+                            tot_tok = resp.usage.total_tokens
+                            token_usage_info = f"📊 **Token:** Input {in_tok} + Output {out_tok} = **{tot_tok} Totali**"
 
-                st.markdown(response_text, unsafe_allow_html=True) 
-                
-                if token_usage_info:
-                    st.caption(token_usage_info)
+                    st.markdown(response_text, unsafe_allow_html=True) 
+                    
+                    if token_usage_info:
+                        st.caption(token_usage_info)
 
-                st.session_state.messages.append({"role": "model", "content": response_text})
-                
-            except Exception as e:
-                err_msg = str(e)
-                if "rate_limit_exceeded" in err_msg.lower() or "413" in err_msg:
-                    st.error(f"❌ **ERRORE LIMITE GROQ**: Il database è troppo grande per il piano gratuito. **Usa Google Gemini.**")
-                else:
-                    st.error(f"Errore tecnico con {provider}: {e}")
+                    st.session_state.messages.append({"role": "model", "content": response_text})
+                    
+                except Exception as e:
+                    err_msg = str(e)
+                    if "rate_limit_exceeded" in err_msg.lower() or "413" in err_msg:
+                        st.error(f"❌ **ERRORE LIMITE GROQ**: Il database è troppo grande per il piano gratuito. **Usa Google Gemini.**")
+                    else:
+                        st.error(f"Errore tecnico con {provider}: {e}")
