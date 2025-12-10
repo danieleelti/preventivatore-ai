@@ -203,7 +203,13 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
 
     # Selezione Modello in base al provider
     if provider == "Google Gemini":
-        model_options = ["gemini-1.5-pro-latest", "gemini-1.5-flash"]
+        model_options = [
+            "gemini-3.0-pro-preview", # DEFAULT SU TUA INDICAZIONE
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-pro-latest",
+            "gemini-1.5-flash",
+            "gemini-1.0-pro"
+        ]
     elif provider == "Groq":
         model_options = [
             "llama-3.3-70b-versatile",
