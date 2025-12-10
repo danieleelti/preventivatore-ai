@@ -3,13 +3,13 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import csv
 import os
-import random  # <--- NUOVO IMPORT PER GLI AFORISMI
+import random
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import pytz
 
-# --- GESTIONE IMPORT LIBRERIE OPZIONALI ---
+# --- IMPORT LIBRERIE OPZIONALI ---
 from openai import OpenAI
 try:
     from groq import Groq
@@ -19,7 +19,7 @@ except ImportError:
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO (COMPLETO) ---
+# --- CSS PERSONALIZZATO ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
@@ -106,7 +106,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- IMPORTAZIONE MODULO ESTERNO (LOCATION) ---
+# --- IMPORTAZIONE MODULO ESTERNO ---
 try:
     import locations_module
 except ImportError:
@@ -115,13 +115,10 @@ except ImportError:
 # --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
-    # Flag fondamentale per dire "al prossimo riavvio, riprocessa l'ultimo messaggio"
     st.session_state.retry_trigger = True
 
 def reset_preventivo():
-    """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
-    st.session_state.total_tokens_used = 0
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
     for key in keys_to_clear:
         if key in st.session_state:
@@ -157,7 +154,6 @@ def carica_google_sheet(sheet_name):
         return None
 
 def database_to_string(database_list):
-    """Converte la lista di dizionari in stringa per il prompt con sanitizzazione link."""
     if not database_list: return "Nessun dato disponibile."
     try:
         if not isinstance(database_list[0], dict): return "" 
@@ -166,7 +162,6 @@ def database_to_string(database_list):
             clean_riga = {}
             for k, v in riga.items():
                 val_str = str(v) if v is not None else ""
-                # Pulizia automatica spazi nei link
                 if val_str.strip().lower().startswith("http") and " " in val_str:
                     val_str = val_str.replace(" ", "%20")
                 clean_riga[k] = val_str
@@ -179,9 +174,7 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
-# --- FUNZIONE DI SALVATAGGIO ---
 def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
-    """Salva una riga nel foglio PreventiviInviatiAi."""
     client = get_gspread_client()
     if not client: return False
     try:
@@ -190,8 +183,6 @@ def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
         now = datetime.now(tz_ita)
         data_oggi = now.strftime("%Y-%m-%d")
         ora_oggi = now.strftime("%H:%M:%S")
-        
-        # Colonne: Nome Cliente | Utente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
         row = [cliente, utente, data_oggi, ora_oggi, pax, data_evento, citta, contenuto]
         sheet.append_row(row)
         return True
@@ -217,13 +208,12 @@ if not st.session_state.authenticated:
     with c2:
         st.title("🔒 Area Riservata")
         pwd = st.text_input("Inserisci Password Staff", type="password")
-        
         if st.button("Accedi"):
             users_db = st.secrets.get("passwords", {})
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
-                st.session_state.messages = [] # Reset chat al login
+                st.session_state.messages = [] 
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -234,31 +224,22 @@ if "enable_locations_state" not in st.session_state:
     st.session_state.enable_locations_state = False 
 if "retry_trigger" not in st.session_state:
     st.session_state.retry_trigger = False
-if "total_tokens_used" not in st.session_state:
-    st.session_state.total_tokens_used = 0
 
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
     
-    # --- LISTA AFORISMI AZIENDALI SIMPATICI ---
+    # SALUTO CON AFORISMA
     aforismi = [
         "Il lavoro di squadra è essenziale: ti permette di dare la colpa a qualcun altro.",
         "Una riunione è un evento in cui si tengono le minute e si perdono le ore.",
         "Non rimandare a domani quello che puoi far fare a uno stagista oggi.",
         "Per aspera ad fattura.",
-        "Lavorare duro non ha mai ucciso nessuno, ma perché rischiare?",
         "Il cliente ha sempre ragione, tranne quando chiede lo sconto.",
         "La creatività è l'arte di nascondere le proprie fonti.",
-        "Se tutto sembra sotto controllo, non stai andando abbastanza veloce.",
-        "Deadline: quella linea immaginaria che oltrepassiamo correndo.",
-        "Errare è umano, dare la colpa al computer è ancora più umano.",
-        "Se non puoi convincerli, confondili."
+        "Se tutto sembra sotto controllo, non stai andando abbastanza veloce."
     ]
-    # -------------------------------------------
-    
     quote = random.choice(aforismi)
     welcome_msg = f"Ciao **{st.session_state.username}**! 👋\n\n_{quote}_\n\nUsa la barra laterale a sinistra per compilare i dati."
-        
     st.session_state.messages.append({"role": "model", "content": welcome_msg})
 
 # --- SIDEBAR ---
@@ -269,14 +250,12 @@ with st.sidebar:
     
     st.subheader("📝 Dati Brief")
     
-    # PULSANTE NUOVO PREVENTIVO
     if len(st.session_state.messages) > 1:
         if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
             reset_preventivo()
             st.rerun()
         st.markdown("---")
 
-    # WIDGET INPUT
     cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
     col_pax, col_data = st.columns(2)
     with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
@@ -317,7 +296,6 @@ if use_location_db:
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
 else:
-    # Se disabilitato, istruisco l'AI a saltare completamente.
     location_guardrail_prompt = """
     ISTRUZIONE TASSATIVA LOCATION: IL DATABASE LOCATION È SPENTO.
     NON SCRIVERE NULLA SU LOCATION.
@@ -325,95 +303,58 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (VERSIONE FINALE BLINDATA) ---
+# --- 5. SYSTEM PROMPT (PULITO E CHIARO) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
-SEI UN EVENT MANAGER E GENERATORE DI PREVENTIVI. 
-Il tuo compito è creare un preventivo HTML perfettamente formattato per Streamlit.
+SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 {context_brief}
 
-### 🔢 CALCOLO PREVENTIVI (Formula Nascosta)
-* **P_BASE:** Dal DB.
-* **M_PAX:** <5:x3.20 | 5-10:x1.60 | 11-20:x1.05 | 21-30:x0.95 | 31-60:x0.90 | 61-90:x0.90 | 91-150:x0.85 | 151-250:x0.70 | >250:x0.60
-* **M_STAGIONE:** Alta (Mag,Giu,Lug,Set,Ott,Dic):x1.10 | Bassa:x1.02
-* **M_LOCATION:** MI:x1.00 | RM:x0.95 | VE:x1.30 | Centro:x1.05 | Altro:x1.15 | Isole:x1.30
-* **M_DURATA:** 0-2h:x1.00 | Mezza:x1.10 | Intera:x1.20
-* **FORMULA:** `(P_BASE * MOLTIPLICATORI) * PAX` -> Arrotondato ai 100€ superiori. Minimo 1800€.
+### 🛡️ PROTOCOLLO E FORMATTAZIONE
+1.  **USO DEL DATABASE:** Usa SOLO i dati caricati nel prompt.
+2.  **HTML OBBLIGATORIO:** Per i titoli delle sezioni usa SOLO questo HTML:
+    `<div class="block-header"><span class="block-title">TITOLO</span><span class="block-claim">CLAIM</span></div>`
+3.  **DIVIETI:** NON scrivere "Fase 1", "Analisi", "Ecco il preventivo". NON usare emoji nel testo delle descrizioni (solo nel titolo). NON spiegare i calcoli.
 
-### 🚦 FLUSSO DI LAVORO (OBBLIGATORIO)
-
-**FASE 1: INTRODUZIONE**
-Scrivi un paragrafo di 3-4 righe (testo normale). Saluta il cliente ({cliente_input}), cita i dettagli del brief e usa un tono caldo e professionale.
-
-**FASE 2: LA REGOLA DEL 12 (4+4+2+2)**
-Devi presentare ESATTAMENTE 12 format divisi in 4 categorie, seguendo questa distribuzione TASSATIVA:
-1.  **I BEST SELLER** (4 format)
-2.  **LE NOVITÀ** (4 format)
-3.  **VIBE & RELAX** (2 format)
-4.  **SOCIAL** (2 format)
-
-Per OGNI categoria, devi usare ESATTAMENTE questo codice HTML come titolo:
-`<div class="block-header"><span class="block-title">NOME CATEGORIA</span><span class="block-claim">CLAIM</span></div>`
-
-*Regole Format:* Emoji solo nel titolo (es. "### 🍳 Cooking"). Descrizione pulita senza emoji.
-
-**FASE 3: TABELLA RIEPILOGATIVA**
-Titolo HTML: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {citta_input}</span></div>`
-Tabella Markdown standard con link al PDF.
-**IMPORTANTE:** L'intestazione della colonna prezzi DEVE ESSERE: `Costo Totale (+IVA)`.
-
-**FASE 4: INFO UTILI**
-Copia esattamente questo blocco:
-
-### Informazioni Utili
-
-✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
-
-✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
-
-✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
-
-✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
-
-✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
-
-✔️ **Chiedici anche** servizio video/foto e gadget.
+### 🔢 CALCOLO PREVENTIVI (ALGORITMO NASCOSTO)
+* **MOLTIPLICATORI:**
+    * **Pax:** <5:x3.20 | 5-10:x1.60 | 11-20:x1.05 | 21-30:x0.95 | 31-60:x0.90 | 61-90:x0.90 | 91-150:x0.85 | 151-250:x0.70 | >250:x0.60
+    * **Stagione:** Alta (Mag-Dic escluso Nov):x1.10 | Bassa (Gen-Apr, Nov):x1.02
+    * **Location:** MI:x1.00 | RM:x0.95 | VE:x1.30 | Centro:x1.05 | Altro:x1.15 | Isole:x1.30
+    * **Durata:** 0-2h:x1.00 | Mezza:x1.10 | Intera:x1.20
+* **FORMULA:** `(P_BASE * MOLTIPLICATORI) * PAX`
+* **ARROTONDAMENTO:** A 100€ superiori (es. 2340 -> 2400). Minimo 1800€.
 
 ---
+### 🚦 ORDINE DI OUTPUT (RIGIDO)
 
-### 💀 REGOLE TECNICHE ANTI-ROTTURA (Per Groq/Llama)
-1.  **NON USARE MAI** backticks (```) per blocchi di codice HTML. Scrivi l'HTML direttamente nel flusso del testo.
-2.  **NON SCRIVERE** "Fase 1", "Ecco i format". Vai dritto al sodo.
-3.  **RISPETTA I DIV** HTML rossi. Sono fondamentali per il layout.
+**1. INTRODUZIONE**
+Scrivi 3-4 righe di testo semplice. Saluta {cliente_input}, cita brief (pax, città) e dai il benvenuto con calore.
 
-### 📝 ESEMPIO STRUTTURA OUTPUT (Imita questo schema)
+**2. PRESENTAZIONE FORMAT (Regola 4+4+2+2)**
+Proponi 12 format divisi in 4 categorie.
+Usa i blocchi HTML rossi per i titoli.
 
-Ciao Mario, grazie per la richiesta... (Intro discorsiva)
+* **I BEST SELLER** (4 format) - Claim: "I più amati dai nostri clienti"
+* **LE NOVITÀ** (4 format) - Claim: "Freschi di lancio"
+* **VIBE & RELAX** (2 format) - Claim: "Atmosfera e condivisione"
+* **SOCIAL** (2 format) - Claim: "Impatto positivo"
 
-<div class="block-header"><span class="block-title">I BEST SELLER</span><span class="block-claim">I più amati dai nostri clienti</span></div>
-
-### 🍳 Cooking Team Building
-Descrizione del format cooking...
-
-(Inserire altri 3 format Best Seller...)
-
-<div class="block-header"><span class="block-title">LE NOVITÀ</span><span class="block-claim">Freschi di lancio</span></div>
-
-### 🕵️ Urban Game AI
-Descrizione del format...
-
-(Proseguire con tutte le categorie rispettando i numeri 4-4-2-2)
-
-<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: 50 pax | Milano</span></div>
-
+**3. TABELLA RIEPILOGATIVA**
+Usa il titolo HTML rosso.
+Crea una tabella Markdown:
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
 | 🍳 Cooking | € 2.400,00 | [Link](...) |
 
-### Informazioni Utili
-✔️ **Tutti i format sono nostri**...
-(Eccetera)
+**4. INFO UTILI**
+Riporta esattamente:
+✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
@@ -433,10 +374,6 @@ if generate_btn:
     
     prompt_to_process = f"Ciao, sono {cliente_input}. Vorrei un preventivo per {pax_input} persone, data {data_evento_input}, a {citta_input}. Durata: {durata_input}. Obiettivo: {obiettivo_input}."
     
-    # SALVATAGGIO PRIMO MESSAGGIO IN SESSIONE (con aforisma)
-    # Nota: il messaggio di benvenuto è già stato aggiunto all'inizializzazione.
-    
-    # Aggiungi messaggio utente alla chat
     st.session_state.messages.append({"role": "user", "content": prompt_to_process})
 
 chat_input = st.chat_input("Chiedi una modifica...")
@@ -450,13 +387,9 @@ for message in st.session_state.messages:
 
 # --- 8. ELABORAZIONE AI ---
 if prompt_to_process:
-    # Se il messaggio non è già stato aggiunto (caso input manuale o retry), aggiungilo
     if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt_to_process:
         st.session_state.messages.append({"role": "user", "content": prompt_to_process})
     
-    # Non renderizziamo di nuovo il messaggio utente se siamo nel loop di generazione, 
-    # perché è già stato renderizzato dal ciclo `for` sopra se aggiunto allo state.
-    # Ma per sicurezza visuale immediata nel caso di chat input:
     if chat_input:
        with st.chat_message("user"): st.markdown(prompt_to_process)
 
@@ -492,16 +425,18 @@ if prompt_to_process:
                         response_text = response.text
 
                     elif provider == "Groq":
-                        # --- BLOCCO GROQ NATIVO ---
                         if Groq is None:
                             st.error("⚠️ Libreria 'groq' non trovata. Esegui pip install groq")
                             st.stop()
                         
                         client = Groq(api_key=api_key.strip())
-                        messages_groq = [{"role": "system", "content": FULL_SYSTEM_PROMPT}]
-                        for m in st.session_state.messages[-6:]:
-                            role = "assistant" if m["role"] == "model" else "user"
-                            messages_groq.append({"role": role, "content": m["content"]})
+                        
+                        # TRUCCO PER GROQ: NON passare la cronologia. Solo System + Ultimo Messaggio.
+                        # Questo evita che "impari" dagli errori precedenti o vada in confusione.
+                        messages_groq = [
+                            {"role": "system", "content": FULL_SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt_to_process} 
+                        ]
                         
                         resp = client.chat.completions.create(model=selected_model_name, messages=messages_groq, temperature=0.0)
                         response_text = resp.choices[0].message.content
