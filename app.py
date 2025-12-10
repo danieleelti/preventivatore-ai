@@ -15,21 +15,41 @@ st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 st.markdown("""
 <style>
     /* Stile generale messaggi */
-    div[data-testid="stChatMessage"] { background-color: #ffffff !important; border: 1px solid #f0f2f6; border-radius: 10px; padding: 15px; }
-    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] div {
+    div[data-testid="stChatMessage"] { 
+        background-color: #ffffff !important; 
+        border: 1px solid #f0f2f6; 
+        border-radius: 10px; 
+        padding: 15px; 
+    }
+    
+    /* Testo normale */
+    div[data-testid="stChatMessage"] p, 
+    div[data-testid="stChatMessage"] li, 
+    div[data-testid="stChatMessage"] div {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 15px !important;
         color: #000000 !important;
         line-height: 1.6 !important;
     }
     
+    /* TITOLI FORMAT (H3) - RIDIMENSIONATI */
+    div[data-testid="stChatMessage"] h3 {
+        font-family: 'Calibri', 'Arial', sans-serif !important;
+        font-size: 17px !important; /* Era troppo grande, ora è giusto */
+        font-weight: 800 !important;
+        color: #000000 !important;
+        margin-top: 20px !important; 
+        margin-bottom: 5px !important;
+        text-transform: uppercase !important;
+    }
+
     /* Intestazioni Blocchi (HTML generato dall'AI) */
     .block-header {
         background-color: #f8f9fa;
         border-left: 5px solid #ff4b4b;
         padding: 15px;
-        margin-top: 25px !important;
-        margin-bottom: 15px !important;
+        margin-top: 30px !important;
+        margin-bottom: 20px !important;
         border-radius: 0 8px 8px 0;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
     }
@@ -56,6 +76,7 @@ st.markdown("""
         border-collapse: collapse !important;
         border: 1px solid #e0e0e0 !important;
         font-size: 14px !important;
+        margin-top: 10px !important;
     }
     div[data-testid="stChatMessage"] th {
         background-color: #f1f3f4 !important;
@@ -224,15 +245,31 @@ with st.sidebar:
         api_key = st.secrets.get("GOOGLE_API_KEY") if provider == "Google Gemini" else st.secrets.get("GROQ_API_KEY")
         if not api_key: st.error(f"⚠️ Manca API Key per {provider}")
 
+# --- GESTIONE LOGICA LOCATION ---
+# Se il checkbox è attivo, carico il DB. Altrimenti, la variabile per il prompt è un comando di "SILENZIO".
 location_instructions_block = ""
+location_guardrail_prompt = ""
+
 if use_location_db:
     with st.spinner("Caricamento Location..."):
         location_database = carica_google_sheet('LocationGoogleAi')
         if location_database and locations_module:
             loc_db_string = database_to_string(location_database)
+            # Qui costruiamo il blocco con i dati veri
             location_instructions_block = locations_module.get_location_instructions(loc_db_string)
+            location_guardrail_prompt = f"FASE 2: SUGGERIMENTO LOCATION\n{location_instructions_block}"
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
+else:
+    # Se disabilitato, istruisco l'AI a saltare completamente.
+    location_guardrail_prompt = """
+    FASE 2: SUGGERIMENTO LOCATION
+    ⚠️ ISTRUZIONE TASSATIVA: IL DATABASE LOCATION È SPENTO.
+    NON SCRIVERE NULLA IN QUESTA FASE.
+    NON INVENTARE LOCATION.
+    NON SCRIVERE 'NESSUNA LOCATION TROVATA'.
+    SALTA DIRETTAMENTE ALLA TABELLA RIEPILOGATIVA.
+    """
 
 # --- 5. SYSTEM PROMPT ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
@@ -311,8 +348,7 @@ Le categorie sono:
 ### [Emoji] [Nome Format]
 [Descrizione breve basata sul DB]
 
-**FASE 2: SUGGERIMENTO LOCATION**
-{location_instructions_block}
+{location_guardrail_prompt}
 
 **FASE 3: TABELLA RIEPILOGATIVA (TASSATIVA)**
 Usa questo HTML per il titolo:
@@ -345,11 +381,7 @@ Riporta questo blocco ESATTAMENTE così com'è:
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-if not location_instructions_block:
-    location_guardrail_silent = "ISTRUZIONE PER FASE 2: NON SCRIVERE NULLA. SALTA QUESTA FASE."
-    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_guardrail_silent)}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
-else:
-    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_instructions_block)}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
