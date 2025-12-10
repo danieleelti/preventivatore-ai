@@ -122,7 +122,6 @@ def reset_preventivo():
     """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
     st.session_state.total_tokens_used = 0
-    # Svuota i widget tramite le loro chiavi
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
     for key in keys_to_clear:
         if key in st.session_state:
@@ -366,18 +365,32 @@ Le categorie sono:
 
 **3. TABELLA RIEPILOGATIVA**
 Titolo HTML: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {citta_input}</span></div>`
+
+**LINK SCHEDA TECNICA (TASSATIVO):**
+* Il testo del link DEVE essere il nome del file (es. `Cooking.pdf`).
+* NON scrivere mai solo "Link".
+* Esempio corretto: `[Cooking.pdf](http://...)`
+
 Tabella Markdown:
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 🍳 Cooking | € 2.400,00 | [Link](...) |
+| 🍳 Cooking | € 2.400,00 | [Cooking.pdf](...) |
 
 **4. INFO UTILI**
-Copia questo blocco:
+Copia ESATTAMENTE questo blocco (assicurati di andare a capo tra i punti):
+
+### Informazioni Utili
+
 ✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+
 ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+
 ✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+
 ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+
 ✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
@@ -424,20 +437,28 @@ Devi generare 12 format. Per OGNI categoria usa TASSATIVAMENTE questo HTML:
 **3. TABELLA RIEPILOGATIVA**
 Usa questo titolo HTML: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {citta_input}</span></div>`
 
-Crea una tabella Markdown valida (usa `|` e vai a capo):
+Crea una tabella Markdown valida (usa `|` e vai a capo).
+Il link deve avere il nome del file (es `Cooking.pdf`).
+
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 🍳 Cooking | € 2.400,00 | [Link](...) |
+| 🍳 Cooking | € 2.400,00 | [Cooking.pdf](...) |
 
 **4. INFO UTILI**
 Copia-incolla questo blocco:
 
 ### Informazioni Utili
+
 ✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
+
 ✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
+
 ✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
+
 ✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
+
 ✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
+
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
