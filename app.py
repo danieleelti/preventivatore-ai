@@ -128,13 +128,31 @@ def carica_google_sheet(sheet_name):
         return None
 
 def database_to_string(database_list):
+    """
+    Converte la lista di dizionari in stringa per il prompt.
+    INCLUDE LA SANITIZZAZIONE AUTOMATICA DEI LINK:
+    Sostituisce gli spazi con %20 in qualsiasi valore che inizi con 'http'.
+    """
     if not database_list: return "Nessun dato disponibile."
     try:
         if not isinstance(database_list[0], dict): return "" 
-        header = " | ".join(database_list[0].keys())
-        rows = []
+        
+        # --- FIX LINK AUTOMATICO ---
+        sanitized_list = []
         for riga in database_list:
-            clean_values = [str(v) if v is not None else "" for v in riga.values()]
+            clean_riga = {}
+            for k, v in riga.items():
+                val_str = str(v) if v is not None else ""
+                # Se è un link e contiene spazi, lo ripariamo QUI in Python
+                if val_str.strip().lower().startswith("http") and " " in val_str:
+                    val_str = val_str.replace(" ", "%20")
+                clean_riga[k] = val_str
+            sanitized_list.append(clean_riga)
+        
+        header = " | ".join(sanitized_list[0].keys())
+        rows = []
+        for riga in sanitized_list:
+            clean_values = list(riga.values())
             rows.append(" | ".join(clean_values))
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
@@ -276,15 +294,14 @@ Prima della tabella, inserisci il titolo usando ESATTAMENTE questo codice HTML, 
 <span class="block-claim">Brief: [Pax] pax | [Data] | [Location] | [Obiettivo/Mood]</span>
 </div>
 
-**⚠️ REGOLA LINK SCHEDA TECNICA (CRITICO - DO OR DIE):**
+**⚠️ REGOLA LINK SCHEDA TECNICA (CRITICO):**
 1. Cerca nel DB la colonna "Scheda Tecnica", "Link", "URL" o "Pdf".
-2. **SANITIZZAZIONE URL:** Se l'URL contiene degli SPAZI, SOSTITUISCILI CON `%20`.
-3. Il testo del link deve essere sempre "NomeFormat.pdf".
-4. FORMATO OBBLIGATORIO: `[NomeFormat.pdf](URL_SANITIZZATO_SENZA_SPAZI)`.
+2. **COPIA L'URL ESATTAMENTE COM'È.** (I link sono già stati puliti, non modificarli).
+3. FORMATO: `[NomeFormat.pdf](URL_DAL_DATABASE)`.
 
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_CON_PERCENTO_20) |
+| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO) |
 | ... | ... | ... |
 
 *(Inserisci qui tutti i 12 format proposti con i relativi prezzi calcolati)*.
@@ -336,32 +353,22 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
         st.session_state.messages = []
         st.rerun()
 
-# --- LOGICA DI CONTROLLO E GENERAZIONE AI ---
-# Controlliamo se l'ultimo messaggio è dell'utente per innescare la risposta o il blocco
-if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-    last_user_msg = st.session_state.messages[-1]["content"]
-    
-    # 1. CONTROLLO KEYWORD LOCATION
+    # --- CONTROLLO KEYWORD LOCATION + LOGICA BOTTONE (FUNZIONE CALLBACK) ---
     keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
-    is_location_request = any(k in last_user_msg.lower() for k in keywords_location)
+    is_location_request = any(k in prompt.lower() for k in keywords_location)
     
-    # Variabile Semaforo per decidere se generare o fermarsi
+    # Se chiede location MA il DB è spento, mostriamo bottone e FERMIAMO l'esecuzione.
     should_generate_response = True
-
-    # 2. SE CHIEDE LOCATION MA IL DB È SPENTO -> STOP E BOTTONE
     if is_location_request and not st.session_state.enable_locations_state:
-        should_generate_response = False # Semaforo ROSSO
+        should_generate_response = False
         with st.chat_message("assistant"):
             st.warning("⚠️ **Il Database Location è spento per massimizzare la velocità.**")
             st.info("Per includere suggerimenti mirati sulle location partner, attiva il database qui sotto:")
             
-            # Bottone collegato alla callback
             st.button("🟢 ATTIVA DATABASE LOCATION E RISPONDI", on_click=enable_locations_callback)
-            
-            # Non usiamo st.stop() qui per non rompere il layout, ma semplicemente
-            # non entriamo nel blocco di generazione sottostante.
+            # Stop temporaneo, riparte dopo il clic
 
-    # 3. SE TUTTO OK (SEMAFORO VERDE) -> GENERA
+    # --- 3. GENERAZIONE RISPOSTA AI ---
     if should_generate_response:
         with st.chat_message("assistant"):
             with st.spinner(f"Elaborazione con {provider}..."):
@@ -391,7 +398,7 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
                                 history_gemini.append({"role": "model", "parts": [m["content"]]})
                         
                         chat = model.start_chat(history=history_gemini[:-1])
-                        response = chat.send_message(last_user_msg) 
+                        response = chat.send_message(prompt)
                         response_text = response.text
                         
                         if response.usage_metadata:
