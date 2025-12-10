@@ -6,7 +6,8 @@ import csv
 import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import save  # Modulo di salvataggio
+from datetime import datetime
+import pytz
 
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
@@ -15,17 +16,8 @@ st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 st.markdown("""
 <style>
     /* Stile generale messaggi */
-    div[data-testid="stChatMessage"] { 
-        background-color: #ffffff !important; 
-        border: 1px solid #f0f2f6; 
-        border-radius: 10px; 
-        padding: 15px; 
-    }
-    
-    /* Testo normale */
-    div[data-testid="stChatMessage"] p, 
-    div[data-testid="stChatMessage"] li, 
-    div[data-testid="stChatMessage"] div {
+    div[data-testid="stChatMessage"] { background-color: #ffffff !important; border: 1px solid #f0f2f6; border-radius: 10px; padding: 15px; }
+    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] div {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 15px !important;
         color: #000000 !important;
@@ -43,7 +35,7 @@ st.markdown("""
         text-transform: uppercase !important;
     }
 
-    /* Intestazioni Blocchi (HTML generato dall'AI) */
+    /* Intestazioni Blocchi */
     .block-header {
         background-color: #f8f9fa;
         border-left: 5px solid #ff4b4b;
@@ -166,6 +158,26 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
+# --- NUOVA FUNZIONE DI SALVATAGGIO (INTEGRATA) ---
+def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
+    """Salva una riga nel foglio PreventiviInviatiAi."""
+    client = get_gspread_client()
+    if not client: return False
+    try:
+        sheet = client.open("PreventiviInviatiAi").get_worksheet(0)
+        tz_ita = pytz.timezone('Europe/Rome')
+        now = datetime.now(tz_ita)
+        data_oggi = now.strftime("%Y-%m-%d")
+        ora_oggi = now.strftime("%H:%M:%S")
+        
+        # Colonne: Nome Cliente | Utente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
+        row = [cliente, utente, data_oggi, ora_oggi, pax, data_evento, citta, contenuto]
+        sheet.append_row(row)
+        return True
+    except Exception as e:
+        st.error(f"❌ Errore durante il salvataggio su Sheet: {e}")
+        return False
+
 # --- CARICAMENTO DATI BASE ---
 master_database = carica_google_sheet('MasterTbGoogleAi') 
 if master_database is None:
@@ -186,7 +198,9 @@ if not st.session_state.authenticated:
         pwd = st.text_input("Inserisci Password Staff", type="password")
         
         if st.button("Accedi"):
+            # Recupera le password dai SECRETS
             users_db = st.secrets.get("passwords", {})
+            
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
@@ -259,7 +273,6 @@ if use_location_db:
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
 else:
-    # Se disabilitato, istruisco l'AI a saltare completamente.
     location_guardrail_prompt = """
     FASE 2: SUGGERIMENTO LOCATION
     ⚠️ ISTRUZIONE TASSATIVA: IL DATABASE LOCATION È SPENTO.
@@ -471,7 +484,7 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "model
     c1, c2 = st.columns([1, 2])
     with c1:
         if st.button("💾 SALVA SU GOOGLE SHEET", use_container_width=True):
-            if save.salva_preventivo(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
+            if salva_preventivo_su_db(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
                 st.success(f"✅ Preventivo per {cliente_input} salvato!")
             else:
                 st.error("Errore salvataggio.")
