@@ -111,7 +111,9 @@ def enable_locations_callback():
     st.session_state.retry_trigger = True
 
 def reset_preventivo():
+    """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
+    st.session_state.total_tokens_used = 0
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
     for key in keys_to_clear:
         if key in st.session_state:
@@ -147,6 +149,7 @@ def carica_google_sheet(sheet_name):
         return None
 
 def database_to_string(database_list):
+    """Converte la lista di dizionari in stringa per il prompt con sanitizzazione link."""
     if not database_list: return "Nessun dato disponibile."
     try:
         if not isinstance(database_list[0], dict): return "" 
@@ -155,6 +158,7 @@ def database_to_string(database_list):
             clean_riga = {}
             for k, v in riga.items():
                 val_str = str(v) if v is not None else ""
+                # Pulizia automatica spazi nei link
                 if val_str.strip().lower().startswith("http") and " " in val_str:
                     val_str = val_str.replace(" ", "%20")
                 clean_riga[k] = val_str
@@ -167,7 +171,9 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
+# --- FUNZIONE DI SALVATAGGIO ---
 def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
+    """Salva una riga nel foglio PreventiviInviatiAi."""
     client = get_gspread_client()
     if not client: return False
     try:
@@ -176,6 +182,8 @@ def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
         now = datetime.now(tz_ita)
         data_oggi = now.strftime("%Y-%m-%d")
         ora_oggi = now.strftime("%H:%M:%S")
+        
+        # Colonne: Nome Cliente | Utente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
         row = [cliente, utente, data_oggi, ora_oggi, pax, data_evento, citta, contenuto]
         sheet.append_row(row)
         return True
@@ -201,12 +209,13 @@ if not st.session_state.authenticated:
     with c2:
         st.title("🔒 Area Riservata")
         pwd = st.text_input("Inserisci Password Staff", type="password")
+        
         if st.button("Accedi"):
             users_db = st.secrets.get("passwords", {})
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
-                st.session_state.messages = [] 
+                st.session_state.messages = [] # Reset chat al login
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -229,9 +238,7 @@ if "messages" not in st.session_state or not st.session_state.messages:
         "Per aspera ad fattura.",
         "Il cliente ha sempre ragione, tranne quando chiede lo sconto.",
         "La creatività è l'arte di nascondere le proprie fonti.",
-        "Se tutto sembra sotto controllo, non stai andando abbastanza veloce.",
-        "Se non puoi convincerli, confondili.",
-        "L'esperienza è quella cosa che ottieni subito dopo averne avuto bisogno."
+        "Se tutto sembra sotto controllo, non stai andando abbastanza veloce."
     ]
     quote = random.choice(aforismi)
     welcome_msg = f"Ciao **{st.session_state.username}**! 👋\n\n_{quote}_\n\nUsa la barra laterale a sinistra per compilare i dati."
@@ -245,12 +252,14 @@ with st.sidebar:
     
     st.subheader("📝 Dati Brief")
     
+    # PULSANTE NUOVO PREVENTIVO
     if len(st.session_state.messages) > 1:
         if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
             reset_preventivo()
             st.rerun()
         st.markdown("---")
 
+    # WIDGET INPUT
     cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
     col_pax, col_data = st.columns(2)
     with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
@@ -295,7 +304,7 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (GEMINI CLASSIC - QUELLO CHE FUNZIONA) ---
+# --- 5. SYSTEM PROMPT (GEMINI CLASSIC) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
@@ -338,7 +347,8 @@ Le categorie sono:
 {location_guardrail_prompt}
 
 **FASE 3: TABELLA RIEPILOGATIVA**
-Titolo HTML: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {citta_input}</span></div>`
+Usa ESATTAMENTE questo HTML per il titolo (inserendo tutti i dati):
+`<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {cliente_input} | {pax_input} pax | {data_evento_input} | {citta_input} | {durata_input} | {obiettivo_input}</span></div>`
 
 **LINK SCHEDA TECNICA:**
 * Il testo del link DEVE essere il nome del file (es. `Cooking.pdf`). Non usare "Link".
