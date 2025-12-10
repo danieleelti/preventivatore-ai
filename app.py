@@ -12,7 +12,7 @@ import pytz
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO (COMPLETO) ---
+# --- CSS PERSONALIZZATO ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
@@ -108,14 +108,11 @@ except ImportError:
 # --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
-    # Flag fondamentale per dire "al prossimo riavvio, riprocessa l'ultimo messaggio"
     st.session_state.retry_trigger = True
 
 def reset_preventivo():
-    """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
     st.session_state.total_tokens_used = 0
-    # Svuota i widget tramite le loro chiavi
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
     for key in keys_to_clear:
         if key in st.session_state:
@@ -151,7 +148,6 @@ def carica_google_sheet(sheet_name):
         return None
 
 def database_to_string(database_list):
-    """Converte la lista di dizionari in stringa per il prompt con sanitizzazione link."""
     if not database_list: return "Nessun dato disponibile."
     try:
         if not isinstance(database_list[0], dict): return "" 
@@ -160,7 +156,6 @@ def database_to_string(database_list):
             clean_riga = {}
             for k, v in riga.items():
                 val_str = str(v) if v is not None else ""
-                # Pulizia automatica spazi nei link
                 if val_str.strip().lower().startswith("http") and " " in val_str:
                     val_str = val_str.replace(" ", "%20")
                 clean_riga[k] = val_str
@@ -173,9 +168,7 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
-# --- FUNZIONE DI SALVATAGGIO ---
 def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
-    """Salva una riga nel foglio PreventiviInviatiAi."""
     client = get_gspread_client()
     if not client: return False
     try:
@@ -184,8 +177,6 @@ def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
         now = datetime.now(tz_ita)
         data_oggi = now.strftime("%Y-%m-%d")
         ora_oggi = now.strftime("%H:%M:%S")
-        
-        # Colonne: Nome Cliente | Utente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
         row = [cliente, utente, data_oggi, ora_oggi, pax, data_evento, citta, contenuto]
         sheet.append_row(row)
         return True
@@ -211,13 +202,12 @@ if not st.session_state.authenticated:
     with c2:
         st.title("🔒 Area Riservata")
         pwd = st.text_input("Inserisci Password Staff", type="password")
-        
         if st.button("Accedi"):
             users_db = st.secrets.get("passwords", {})
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
-                st.session_state.messages = [] # Reset chat al login
+                st.session_state.messages = [] 
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -233,13 +223,10 @@ if "total_tokens_used" not in st.session_state:
 
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
-    
-    # SALUTO PERSONALIZZATO
     if st.session_state.username == "Francesca":
         welcome_msg = "Ciao squirtina..." 
     else:
         welcome_msg = f"Ciao **{st.session_state.username}**! Usa la barra laterale a sinistra per compilare i dati."
-        
     st.session_state.messages.append({"role": "model", "content": welcome_msg})
 
 # --- SIDEBAR ---
@@ -250,14 +237,12 @@ with st.sidebar:
     
     st.subheader("📝 Dati Brief")
     
-    # PULSANTE NUOVO PREVENTIVO (Solo se c'è storia)
     if len(st.session_state.messages) > 1:
         if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
             reset_preventivo()
             st.rerun()
         st.markdown("---")
 
-    # WIDGET INPUT
     cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
     col_pax, col_data = st.columns(2)
     with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
@@ -298,7 +283,6 @@ if use_location_db:
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
 else:
-    # Se disabilitato, istruisco l'AI a saltare completamente.
     location_guardrail_prompt = """
     ISTRUZIONE TASSATIVA LOCATION: IL DATABASE LOCATION È SPENTO.
     NON SCRIVERE NULLA SU LOCATION.
@@ -306,73 +290,62 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (PERFETTO CON ONE-SHOT ESEMPIO) ---
+# --- 5. SYSTEM PROMPT (BLINDATO PER GROQ/LLAMA) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
-SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
+SEI UN GENERATORE DI CODICE MARKDOWN E HTML. NON SEI UN CHATBOT GENERICO.
+IL TUO OUTPUT DEVE ESSERE RENDERIZZATO IN UN'APP STREAMLIT.
+Rispondi in Italiano.
 {context_brief}
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO)
-**1. IDENTIFICA P_BASE:** Dal database.
-**2. APPLICA MOLTIPLICATORI:**
+Formula: `PREZZO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * PAX`
+Arrotondamento: `ARROTONDA((PREZZO + 60) / 100) * 100` (Minimo 1800€)
+
+**MOLTIPLICATORI:**
 * **M_PAX:** <5: x3.20 | 5-10: x1.60 | 11-20: x1.05 | 21-30: x0.95 | 31-60: x0.90 | 61-90: x0.90 | 91-150: x0.85 | 151-250: x0.70 | >250: x0.60
 * **M_STAGIONE:** Alta (Mag,Giu,Lug,Set,Ott,Dic): x1.10 | Bassa: x1.02
 * **M_LOCATION:** MI: x1.00 | RM: x0.95 | Venezia: x1.30 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
 * **M_DURATA:** 0-2h: x1.00 | Mezza: x1.10 | Intera: x1.20
-**3. FORMULA:** `PREZZO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * PAX`
-**4. ARROTONDAMENTO:** `ARROTONDA((PREZZO + 60) / 100) * 100` (Minimo 1800€).
 
-### 💀 DIVIETI ASSOLUTI (VIOLAZIONE = CRASH)
-1.  **NO META-TESTO:** Vietato scrivere "Fase 1", "Analisi brief", "Ecco le proposte".
-2.  **NO EMOJI NEL TESTO:** Emoji ammesse SOLO nel titolo format (es. "### 🍳 Cooking").
-3.  **NO TITOLI INVENTATI:** Usa SOLO l'HTML fornito: `<div class="block-header">...</div>`.
-4.  **NO FORMULE SPIEGATE:** Solo la cifra finale in tabella.
+### 💀 REGOLE TECNICHE ASSOLUTE (NON IGNORARE)
+1.  **RAW HTML:** Per i titoli rossi, DEVI scrivere l'HTML grezzo. NON convertirlo in markdown, NON rimuoverlo. Scrivilo esattamente così: `<div class="block-header">...</div>`.
+2.  **TABELLA MARKDOWN:** Usa la sintassi corretta `| Col1 | Col2 |` e vai a capo per ogni riga.
+3.  **NO META-TESTO:** Vietato scrivere "Fase 1", "Analisi brief".
+4.  **NO EMOJI NEL TESTO:** Emoji ammesse SOLO nel titolo format (es. "### 🍳 Cooking").
 
-### 📝 ESEMPIO DI OUTPUT PERFETTO (COPIA QUESTO STILE)
-*Input utente: Mario Rossi, 50 pax, Milano*
-*Tua risposta deve essere:*
+### 📝 ESEMPIO DI OUTPUT CORRETTO (IMITA LA SINTASSI)
+*Input utente: Mario, 50 pax, Milano*
+*Tua risposta deve contenere ESATTAMENTE questo codice HTML:*
 
-Gentile Mario, per il vostro evento a Milano con 50 ospiti ho pensato a soluzioni che favoriscano la massima interazione. Ecco le nostre migliori proposte selezionate per voi.
+Gentile Mario, ecco le proposte...
 
 <div class="block-header"><span class="block-title">I BEST SELLER</span><span class="block-claim">I più amati dai nostri clienti</span></div>
 
 ### 🍳 Cooking Team Building
-Un'esperienza culinaria dove i team si sfidano ai fornelli. Creazione, gusto e divertimento assicurati.
-
-### 🕵️ Urban Game
-Una caccia al tesoro tecnologica per le vie della città. Scoperta e strategia si uniscono.
+Descrizione del format cooking senza emoji nel testo.
 
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: 50 pax | Milano</span></div>
 
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking Team Building | € 2.400,00 | [Cooking.pdf](link) |
+| 👨‍🍳 Cooking Team Building | € 2.400,00 | [Cooking.pdf](http://link) |
 
 ### Informazioni Utili
-✔️ **Tutti i format sono nostri**... (testo standard)
+✔️ **Tutti i format sono nostri**...
 
 --- FINE ESEMPIO ---
 
-### 🚦 ORDINE DI OUTPUT REALE
+### 🚦 ORDINE DI OUTPUT (SEGUI L'ESEMPIO SOPRA)
 
-**1. INTRODUZIONE:** 3-4 righe calde e professionali. Cita i dati del brief.
-**2. CATEGORIE (La Regola del 12):**
-   - **I BEST SELLER** (Claim: "I più amati dai nostri clienti")
-   - **LE NOVITÀ** (Claim: "Freschi di lancio")
-   - **VIBE & RELAX** (Claim: "Atmosfera e condivisione")
-   - **SOCIAL** (Claim: "Impatto positivo")
-   *(Usa i Blocchi HTML per i titoli categoria)*.
-   
-**Struttura Singolo Format:**
-### [Emoji] [Nome Format]
-[Descrizione di max 2-3 righe accattivanti. TESTO PULITO SENZA EMOJI.]
-
-{location_guardrail_prompt}
-
-**3. TABELLA RIEPILOGATIVA:** (Usa blocco HTML + Tabella Markdown con link precisi).
-
-**4. INFO UTILI:** (Blocco standard obbligatorio).
+1.  **INTRODUZIONE:** 3-4 righe calde e professionali.
+2.  **FORMAT (Regola del 12):** 4 Categorie.
+    * **IMPORTANTE:** Prima di ogni gruppo di format, inserisci la stringa HTML: `<div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>`
+3.  **TABELLA RIEPILOGATIVA:**
+    * Usa HTML per il titolo: `<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax...</span></div>`
+    * Crea la tabella Markdown standard.
+4.  **INFO UTILI:** Blocco standard.
 """
 
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
@@ -380,13 +353,11 @@ FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{cs
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
 
-# FIX: GESTIONE RETRY AUTOMATICO (Quando si accende il DB Location)
 if st.session_state.retry_trigger:
     if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
         prompt_to_process = st.session_state.messages[-1]["content"]
     st.session_state.retry_trigger = False 
 
-# GESTIONE PULSANTE GENERA
 if generate_btn:
     if not cliente_input:
         st.sidebar.error("⚠️ ERRORE: Inserisci il Nome Cliente per procedere!")
@@ -411,13 +382,11 @@ for message in st.session_state.messages:
 
 # --- 8. ELABORAZIONE AI ---
 if prompt_to_process:
-    # FIX: Evita di duplicare il messaggio nella chat se stiamo facendo un retry
     if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt_to_process:
         st.session_state.messages.append({"role": "user", "content": prompt_to_process})
     
     with st.chat_message("user"): st.markdown(prompt_to_process)
 
-    # Controllo Location
     keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
     is_location_request = any(k in prompt_to_process.lower() for k in keywords_location)
     
@@ -426,7 +395,6 @@ if prompt_to_process:
         should_generate = False
         with st.chat_message("assistant"):
             st.warning("⚠️ **Il Database Location è spento.**")
-            # Il click su questo pulsante attiverà 'enable_locations_callback' che setta 'retry_trigger'
             st.button("🟢 ATTIVA DATABASE LOCATION", on_click=enable_locations_callback)
 
     if should_generate:
@@ -466,11 +434,10 @@ if prompt_to_process:
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
-# --- PULSANTE SALVATAGGIO (SOLO LUI, COME RICHIESTO) ---
+# --- PULSANTE SALVATAGGIO ---
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "model":
     last_response = st.session_state.messages[-1]["content"]
     st.divider()
-    # Solo pulsante di salvataggio
     if st.button("💾 SALVA SU GOOGLE SHEET", use_container_width=True):
         if salva_preventivo_su_db(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
             st.success(f"✅ Preventivo per {cliente_input} salvato!")
