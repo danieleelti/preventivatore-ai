@@ -12,7 +12,7 @@ import pytz
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO (TUTTA LA FORMATTAZIONE ORIGINALE MANTENUTA) ---
+# --- CSS PERSONALIZZATO (COMPLETO) ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
@@ -99,7 +99,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- IMPORTAZIONE MODULO ESTERNO ---
+# --- IMPORTAZIONE MODULO ESTERNO (LOCATION) ---
 try:
     import locations_module
 except ImportError:
@@ -108,12 +108,13 @@ except ImportError:
 # --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
-    # FIX: Attiviamo un flag per dire "al prossimo riavvio, riprocessa l'ultimo messaggio"
+    # Flag fondamentale per dire "al prossimo riavvio, riprocessa l'ultimo messaggio"
     st.session_state.retry_trigger = True
 
 def reset_preventivo():
     """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
+    st.session_state.total_tokens_used = 0
     # Svuota i widget tramite le loro chiavi
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
     for key in keys_to_clear:
@@ -227,6 +228,8 @@ if "enable_locations_state" not in st.session_state:
     st.session_state.enable_locations_state = False 
 if "retry_trigger" not in st.session_state:
     st.session_state.retry_trigger = False
+if "total_tokens_used" not in st.session_state:
+    st.session_state.total_tokens_used = 0
 
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
@@ -303,97 +306,73 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (AGGIORNATO CON INTRODUZIONE WARM) ---
+# --- 5. SYSTEM PROMPT (PERFETTO CON ONE-SHOT ESEMPIO) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 {context_brief}
 
-⚠️ **IMPORTANTE: ISTRUZIONI DI OUTPUT CLEAN (TASSATIVO)** ⚠️
-1. **DIVIETO ASSOLUTO DI META-TESTO:** NON scrivere MAI frasi come "Fase 1", "Analisi del brief", "Ecco le proposte".
-2. **STRUTTURA DIRETTA:** L'output deve seguire RIGOROSAMENTE quest'ordine:
-   - Paragrafo introduttivo discorsivo.
-   - I Blocchi HTML delle categorie con i format.
-   - La Tabella Riepilogativa HTML.
-   - Il blocco finale "Informazioni Utili".
-3. **DIVIETO EMOJI NEL TESTO:** Usa emoji SOLO prima del titolo (es. "### 🍳 Cooking"). MAI nelle descrizioni.
-4. **HTML:** Usa SOLO i codici HTML forniti per i titoli di sezione (i blocchi rossi).
-
-### 🎨 REGOLE VISUALI
-1.  **ICONE:** Inserisci un'emoji SOLO ed ESCLUSIVAMENTE prima del titolo del format.
-2.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni.
-3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2" come testo.
-
-### 🔢 CALCOLO PREVENTIVI (CALCOLO NASCOSTO)
-⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula. Solo prezzo finale.
-
-**1. P_BASE:** Dal database.
-**2. MOLTIPLICATORI:**
+### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO)
+**1. IDENTIFICA P_BASE:** Dal database.
+**2. APPLICA MOLTIPLICATORI:**
 * **M_PAX:** <5: x3.20 | 5-10: x1.60 | 11-20: x1.05 | 21-30: x0.95 | 31-60: x0.90 | 61-90: x0.90 | 91-150: x0.85 | 151-250: x0.70 | >250: x0.60
 * **M_STAGIONE:** Alta (Mag,Giu,Lug,Set,Ott,Dic): x1.10 | Bassa: x1.02
 * **M_LOCATION:** MI: x1.00 | RM: x0.95 | Venezia: x1.30 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
 * **M_DURATA:** 0-2h: x1.00 | Mezza: x1.10 | Intera: x1.20
-
 **3. FORMULA:** `PREZZO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * PAX`
-**4. MINIMUM:** Se < 1800 -> 1800.
-**5. ARROTONDAMENTO:** `ARROTONDA((PREZZO + 60) / 100) * 100`
+**4. ARROTONDAMENTO:** `ARROTONDA((PREZZO + 60) / 100) * 100` (Minimo 1800€).
 
----
-### 🚦 ORDINE DI PRESENTAZIONE
+### 💀 DIVIETI ASSOLUTI (VIOLAZIONE = CRASH)
+1.  **NO META-TESTO:** Vietato scrivere "Fase 1", "Analisi brief", "Ecco le proposte".
+2.  **NO EMOJI NEL TESTO:** Emoji ammesse SOLO nel titolo format (es. "### 🍳 Cooking").
+3.  **NO TITOLI INVENTATI:** Usa SOLO l'HTML fornito: `<div class="block-header">...</div>`.
+4.  **NO FORMULE SPIEGATE:** Solo la cifra finale in tabella.
 
-**1. INTRODUZIONE DISCORSIVA (Obbligatoria)**
-Scrivi un paragrafo di 3-4 righe (testo semplice, NO titoli).
-- Saluta il cliente con calore e professionalità.
-- Cita esplicitamente i dettagli del brief (Pax, Data, Città) per dimostrare di aver compreso.
-- Anticipa con entusiasmo che hai selezionato le migliori soluzioni per il loro obiettivo.
-- Tono: Empatico, accogliente e sicuro.
+### 📝 ESEMPIO DI OUTPUT PERFETTO (COPIA QUESTO STILE)
+*Input utente: Mario Rossi, 50 pax, Milano*
+*Tua risposta deve essere:*
 
-**2. PRESENTAZIONE CATEGORIE (La Regola del 12)**
-Proponi 12 FORMAT in 4 categorie.
-Usa SOLO questo HTML per i titoli delle categorie:
-<div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>
+Gentile Mario, per il vostro evento a Milano con 50 ospiti ho pensato a soluzioni che favoriscano la massima interazione. Ecco le nostre migliori proposte selezionate per voi.
 
-Le categorie sono:
-1.  **I BEST SELLER** (Claim: "I più amati dai nostri clienti")
-2.  **LE NOVITÀ** (Claim: "Freschi di lancio")
-3.  **VIBE & RELAX** (Claim: "Atmosfera e condivisione")
-4.  **SOCIAL** (Claim: "Impatto positivo")
+<div class="block-header"><span class="block-title">I BEST SELLER</span><span class="block-claim">I più amati dai nostri clienti</span></div>
 
+### 🍳 Cooking Team Building
+Un'esperienza culinaria dove i team si sfidano ai fornelli. Creazione, gusto e divertimento assicurati.
+
+### 🕵️ Urban Game
+Una caccia al tesoro tecnologica per le vie della città. Scoperta e strategia si uniscono.
+
+<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: 50 pax | Milano</span></div>
+
+| Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
+| :--- | :--- | :--- |
+| 👨‍🍳 Cooking Team Building | € 2.400,00 | [Cooking.pdf](link) |
+
+### Informazioni Utili
+✔️ **Tutti i format sono nostri**... (testo standard)
+
+--- FINE ESEMPIO ---
+
+### 🚦 ORDINE DI OUTPUT REALE
+
+**1. INTRODUZIONE:** 3-4 righe calde e professionali. Cita i dati del brief.
+**2. CATEGORIE (La Regola del 12):**
+   - **I BEST SELLER** (Claim: "I più amati dai nostri clienti")
+   - **LE NOVITÀ** (Claim: "Freschi di lancio")
+   - **VIBE & RELAX** (Claim: "Atmosfera e condivisione")
+   - **SOCIAL** (Claim: "Impatto positivo")
+   *(Usa i Blocchi HTML per i titoli categoria)*.
+   
 **Struttura Singolo Format:**
 ### [Emoji] [Nome Format]
 [Descrizione di max 2-3 righe accattivanti. TESTO PULITO SENZA EMOJI.]
 
 {location_guardrail_prompt}
 
-**3. TABELLA RIEPILOGATIVA**
-Usa ESCLUSIVAMENTE questo HTML per il titolo:
-<div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {data_evento_input} | {citta_input}</span></div>
+**3. TABELLA RIEPILOGATIVA:** (Usa blocco HTML + Tabella Markdown con link precisi).
 
-**LINK SCHEDA TECNICA:**
-* Copia URL esatto dal DB.
-* Formato: `[NomeSenzaSpazi.pdf](URL_ESATTO)`.
-
-| Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
-| :--- | :--- | :--- |
-| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO) |
-
-**4. INFO UTILI**
-Riporta questo blocco ESATTAMENTE così com'è:
-
-### Informazioni Utili
-
-✔️ **Tutti i format sono nostri** e possiamo personalizzarli senza alcun problema.
-
-✔️ **La location non è inclusa** ma possiamo aiutarti a trovare quella perfetta per il tuo evento.
-
-✔️ **Le attività di base** sono pensate per farvi stare insieme e divertirvi, ma il team building è anche formazione, aspetto che possiamo includere e approfondire.
-
-✔️ **Prezzo all inclusive:** spese staff, trasferta e tutti i materiali sono inclusi, nessun costo a consuntivo.
-
-✔️ **Assicurazione pioggia:** Se avete scelto un format oudoor ma le previsioni meteo sono avverse, due giorni prima dell'evento sceglieremo insieme un format indoor allo stesso costo.
-
-✔️ **Chiedici anche** servizio video/foto e gadget.
+**4. INFO UTILI:** (Blocco standard obbligatorio).
 """
 
 FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
@@ -403,24 +382,21 @@ prompt_to_process = None
 
 # FIX: GESTIONE RETRY AUTOMATICO (Quando si accende il DB Location)
 if st.session_state.retry_trigger:
-    # Se c'è un retry pending, recuperiamo l'ultimo messaggio dell'utente
     if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
         prompt_to_process = st.session_state.messages[-1]["content"]
-    st.session_state.retry_trigger = False # Reset immediato per evitare loop
+    st.session_state.retry_trigger = False 
 
 # GESTIONE PULSANTE GENERA
 if generate_btn:
-    # --- CONTROLLO OBBLIGATORIETÀ NOME CLIENTE ---
     if not cliente_input:
         st.sidebar.error("⚠️ ERRORE: Inserisci il Nome Cliente per procedere!")
         st.stop()
-    # ---------------------------------------------
     
     prompt_to_process = f"Ciao, sono {cliente_input}. Vorrei un preventivo per {pax_input} persone, data {data_evento_input}, a {citta_input}. Durata: {durata_input}. Obiettivo: {obiettivo_input}."
     
     welcome_user = f"Ciao **{st.session_state.username}**!"
     if st.session_state.username == "Francesca":
-            welcome_user = "Ciao Frà..."
+            welcome_user = "Ciao squirtina..."
             
     st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
 
@@ -500,4 +476,3 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "model
             st.success(f"✅ Preventivo per {cliente_input} salvato!")
         else:
             st.error("Errore salvataggio.")
-
