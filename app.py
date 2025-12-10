@@ -12,7 +12,7 @@ import pytz
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO ---
+# --- CSS PERSONALIZZATO (TUTTA LA FORMATTAZIONE ORIGINALE MANTENUTA) ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
@@ -303,7 +303,7 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (PULITO E AGGIORNATO CON VENEZIA) ---
+# --- 5. SYSTEM PROMPT (AGGIORNATO CON INTRODUZIONE WARM) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
@@ -311,8 +311,9 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 {context_brief}
 
 ⚠️ **IMPORTANTE: ISTRUZIONI DI OUTPUT CLEAN (TASSATIVO)** ⚠️
-1. **DIVIETO ASSOLUTO DI META-TESTO:** NON scrivere MAI frasi come "Fase 1", "Fase 2", "Analisi del brief", "Ecco le proposte", "Protocollo", "Regole Visuali", "Qualificazione".
-2. **STRUTTURA DIRETTA:** L'output deve contenere SOLO ed ESCLUSIVAMENTE:
+1. **DIVIETO ASSOLUTO DI META-TESTO:** NON scrivere MAI frasi come "Fase 1", "Analisi del brief", "Ecco le proposte".
+2. **STRUTTURA DIRETTA:** L'output deve seguire RIGOROSAMENTE quest'ordine:
+   - Paragrafo introduttivo discorsivo.
    - I Blocchi HTML delle categorie con i format.
    - La Tabella Riepilogativa HTML.
    - Il blocco finale "Informazioni Utili".
@@ -339,9 +340,16 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 **5. ARROTONDAMENTO:** `ARROTONDA((PREZZO + 60) / 100) * 100`
 
 ---
-### 🚦 ORDINE DI PRESENTAZIONE (SENZA SCRIVERE I NOMI DELLE FASI)
+### 🚦 ORDINE DI PRESENTAZIONE
 
-**1. PRESENTAZIONE CATEGORIE (La Regola del 12)**
+**1. INTRODUZIONE DISCORSIVA (Obbligatoria)**
+Scrivi un paragrafo di 3-4 righe (testo semplice, NO titoli).
+- Saluta il cliente con calore e professionalità.
+- Cita esplicitamente i dettagli del brief (Pax, Data, Città) per dimostrare di aver compreso.
+- Anticipa con entusiasmo che hai selezionato le migliori soluzioni per il loro obiettivo.
+- Tono: Empatico, accogliente e sicuro.
+
+**2. PRESENTAZIONE CATEGORIE (La Regola del 12)**
 Proponi 12 FORMAT in 4 categorie.
 Usa SOLO questo HTML per i titoli delle categorie:
 <div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>
@@ -358,7 +366,7 @@ Le categorie sono:
 
 {location_guardrail_prompt}
 
-**2. TABELLA RIEPILOGATIVA**
+**3. TABELLA RIEPILOGATIVA**
 Usa ESCLUSIVAMENTE questo HTML per il titolo:
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {data_evento_input} | {citta_input}</span></div>
 
@@ -370,7 +378,7 @@ Usa ESCLUSIVAMENTE questo HTML per il titolo:
 | :--- | :--- | :--- |
 | 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO) |
 
-**3. INFO UTILI**
+**4. INFO UTILI**
 Riporta questo blocco ESATTAMENTE così com'è:
 
 ### Informazioni Utili
