@@ -234,9 +234,12 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
     else:
         st.caption(f"✅ Attivo: {provider} - {selected_model_name}")
 
+if provider == "Groq":
+    st.warning("⚠️ Nota: Il database formati è molto grande. Il piano gratuito di Groq potrebbe bloccare la richiesta (Limite 12k token). Se succede, usa Gemini.")
+
 st.caption(f"Assistente Virtuale Senior - {provider}")
 
-# --- 5. SYSTEM PROMPT DEFINITIVO ---
+# --- 5. SYSTEM PROMPT DEFINITIVO (CON LOGICA COLONNE) ---
 BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT.
 Rispondi in Italiano.
@@ -244,6 +247,7 @@ Rispondi in Italiano.
 ### 🛡️ PROTOCOLLO
 1.  **NATURALITÀ:** Non citare le istruzioni o regole interne.
 2.  **QUALIFICAZIONE:** Se l'utente fornisce input vaghi, chiedi info su Durata, Mood e Obiettivo prima di proporre i format.
+3.  **USO DEL DATABASE:** Sei obbligato a usare i dati forniti nel CSV. Non inventare format che non esistono nel database.
 
 ### 🎨 REGOLE VISUALI
 1.  **ICONE FORMAT:** Inserisci **UNA SOLA EMOJI** a tema esclusivamente nel TITOLO del format (es. ### 🍳 Cooking).
@@ -276,36 +280,32 @@ Se mancano info essenziali, chiedile. Se le hai, procedi.
 
 **FASE 1: LA REGOLA DEL 12 (TASSATIVO)**
 Salvo diversa richiesta numerica dell'utente, proponi **SEMPRE 12 FORMAT** divisi in 4 blocchi.
+Per scegliere i format, **devi guardare le colonne specifiche del Database**:
 
 ⚠️ **TITOLI BLOCCHI (SOLO HTML - NO EMOJI NEI TITOLI):**
-Per separare i blocchi, copia e incolla questo HTML sostituendo solo il testo:
-
-<div class="block-header">
-<span class="block-title">NOME BLOCCO</span>
-<span class="block-claim">Il tuo claim personalizzato qui</span>
-</div>
+Per separare i blocchi, copia e incolla questo HTML sostituendo solo il testo.
 
 **STRUTTURA BLOCCHI:**
 
 **BLOCCO 1: I BEST SELLER** (Usa HTML). Claim: Rassicurante.
-*(Elenca i 4 format più classici)*
-(Inserisci separatore: `---`)
+* **CRITERIO DI SCELTA:** Seleziona i 4 format con il valore più alto nella colonna **"Ranking"** o **"Voto"**. Se la colonna non esiste, scegli quelli con più recensioni o popolarità indicata.
+*(Inserisci separatore: `---`)*
 
 **BLOCCO 2: LE NOVITÀ** (Usa HTML). Claim: Innovazione.
-*(Elenca 4 format originali)*
-(Inserisci separatore: `---`)
+* **CRITERIO DI SCELTA:** Seleziona 4 format che hanno "Sì", "True", "New" o "2024/2025" nella colonna **"Novità"**, **"Anno"** o **"New"**.
+*(Inserisci separatore: `---`)*
 
 **BLOCCO 3: VIBE & RELAX** (Usa HTML). Claim: Atmosfera.
-*(Elenca 2 format atmosfera)*
-(Inserisci separatore: `---`)
+* **CRITERIO DI SCELTA:** Seleziona 2 format che hanno tag come "Relax", "Soft", "Atmosphere" o "Cena" nella colonna **"Categoria"** o **"Tag"**.
+*(Inserisci separatore: `---`)*
 
 **BLOCCO 4: SOCIAL** (Usa HTML). Claim: Relazione/Impatto.
-*(Elenca 2 format creativi)*
-(Inserisci separatore: `---`)
+* **CRITERIO DI SCELTA:** Seleziona 2 format che hanno tag come "Social", "Charity", "Creativo" o "Impatto" nella colonna **"Categoria"**, **"Tag"** o **"Social"**.
+*(Inserisci separatore: `---`)*
 
 **Struttura OBBLIGATORIA per ogni singolo format:**
 ### [Emoji Tematica] [Nome Format]
-[Scrivi 2-3 righe discorsive sul PERCHÉ lo consigliamo. Niente emoji qui.]
+[Scrivi 2-3 righe discorsive sul PERCHÉ lo consigliamo basandoti sulla descrizione nel DB. Niente emoji qui.]
 (Due invio vuoti)
 
 **FASE 2: SUGGERIMENTO LOCATION (CONDIZIONALE)**
@@ -415,7 +415,9 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     
                     # Costruzione messaggi per Groq
                     messages_groq = [{"role": "system", "content": FULL_SYSTEM_PROMPT}]
-                    for m in st.session_state.messages:
+                    # Ottimizzazione: inviamo solo gli ultimi 4 messaggi per risparmiare token contesto
+                    recent_messages = st.session_state.messages[-4:]
+                    for m in recent_messages:
                         # Mappa 'model' -> 'assistant'
                         role = "assistant" if m["role"] == "model" else "user"
                         messages_groq.append({"role": role, "content": m["content"]})
@@ -432,4 +434,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                 st.session_state.messages.append({"role": "model", "content": response_text})
                 
             except Exception as e:
-                st.error(f"Errore durante la generazione con {provider}: {e}")
+                err_msg = str(e)
+                if "rate_limit_exceeded" in err_msg.lower() or "413" in err_msg:
+                    st.error(f"❌ **ERRORE LIMITE GROQ**: Il database è troppo grande ({len(FULL_SYSTEM_PROMPT)} caratteri) per il piano gratuito di Groq. **Per favore passa a Google Gemini dal menu in alto.**")
+                else:
+                    st.error(f"Errore durante la generazione con {provider}: {e}")
