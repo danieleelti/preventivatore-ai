@@ -154,19 +154,12 @@ if not st.session_state.authenticated:
 # --- 4.b CONFIGURAZIONE AI ---
 st.title("🦁 💰 FATTURAGE 💰 🦁")
 
-# --- GUARDRAIL DI SICUREZZA PER LOCATION ---
-# Se il DB è spento, questa variabile contiene un ORDINE di non inventare nulla.
-location_instructions_block = """
-### ⛔ DATABASE LOCATION DISABILITATO
-Attualmente il database delle location NON è caricato in memoria.
+# Inizializza contatore token totale se non esiste
+if "total_tokens_used" not in st.session_state:
+    st.session_state.total_tokens_used = 0
 
-REGOLA TASSATIVA:
-Se l'utente ti chiede suggerimenti su DOVE fare l'evento, location, ville, hotel o spazi:
-1. NON cercare informazioni online.
-2. NON usare la tua conoscenza generale.
-3. NON inventare nomi di location.
-4. RISPONDI ESCLUSIVAMENTE: "⚠️ **Database Location spento.** Per ricevere suggerimenti mirati sulle nostre location partner, attiva la spunta **'Abilita Database Location'** nel menu delle impostazioni in alto ⚙️ e riprova."
-"""
+# Variabile per le istruzioni location (vuota di default)
+location_instructions_block = ""
 
 with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
     col_prov, col_mod = st.columns(2)
@@ -191,7 +184,6 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
         with st.spinner("Scaricamento Database Location in corso..."):
             location_database = carica_google_sheet('LocationGoogleAi')
             if location_database and locations_module:
-                # SE IL DB VIENE CARICATO, SOVRASCRIVO IL BLOCCO DI SICUREZZA CON I DATI REALI
                 loc_db_string = database_to_string(location_database)
                 location_instructions_block = locations_module.get_location_instructions(loc_db_string)
             elif not location_database:
@@ -206,7 +198,9 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
     if not api_key:
         st.error(f"⚠️ Manca la chiave API per {provider} nei secrets!")
     else:
+        # Mostra token totali accumulati
         st.caption(f"✅ Attivo: {provider} - {selected_model_name}")
+        st.info(f"📊 **Consumo Totale Sessione:** {st.session_state.total_tokens_used} Token")
 
 if provider == "Groq":
     st.warning("⚠️ Groq ha un limite di token basso. Se fallisce, usa Gemini.")
@@ -258,8 +252,11 @@ Proponi ESATTAMENTE 12 FORMAT divisi in 4 blocchi, seguendo questa struttura num
 ### [Emoji] [Nome]
 [Descrizione basata sul DB]
 
-**FASE 2: SUGGERIMENTO LOCATION**
-Segui rigorosamente le istruzioni sottostanti. Se il database è disabilitato, devi comunicarlo.
+**FASE 2: SUGGERIMENTO LOCATION (CONDIZIONALE)**
+⚠️ **ATTENZIONE:** Se l'utente NON ha chiesto esplicitamente una location o "dove farlo", **SALTA COMPLETAMENTE QUESTA FASE**. Non scrivere nulla, nemmeno il titolo o avvisi.
+
+*SE E SOLO SE* l'utente ha chiesto location:
+Segui le istruzioni sottostanti:
 {location_instructions_block}
 
 **FASE 3: TABELLA RIEPILOGATIVA (⛔️ TASSATIVA ⛔️)**
@@ -267,16 +264,15 @@ DEVI OBBLIGATORIAMENTE GENERARE QUESTA TABELLA ALLA FINE DELLA RISPOSTA.
 NON TERMINARE MAI LA RISPOSTA SENZA QUESTA TABELLA.
 
 **⚠️ REGOLA LINK SCHEDA TECNICA (CRITICO - DO OR DIE):**
-1. Cerca nel DB la colonna chiamata "Scheda Tecnica", "Link", "URL" o "Pdf" (o simile).
-2. **COPIA IL CONTENUTO DI QUELLA CELLA ESATTAMENTE COME È.**
-3. NON COSTRUIRE IL LINK. NON INVENTARE IL LINK. NON MODIFICARE IL LINK.
-4. Se nella cella c'è un URL lungo e complesso, USALO COSÌ COM'È.
-5. Se la cella è vuota, lascia vuoto o metti un trattino.
-6. FORMATO OBBLIGATORIO: `[NomeFormat.pdf](URL_ESATTO_PRESO_DAL_DB)`.
+1. Cerca nel DB la colonna "Scheda Tecnica", "Link", "URL" o "Pdf".
+2. **SANITIZZAZIONE URL:** Se l'URL contiene degli SPAZI, SOSTITUISCILI CON `%20`.
+   - Esempio: `.../Green Energy.pdf` --> DEVE DIVENTARE `.../Green%20Energy.pdf`
+3. Il testo del link deve essere sempre "NomeFormat.pdf".
+4. FORMATO OBBLIGATORIO: `[NomeFormat.pdf](URL_SANITIZZATO_SENZA_SPAZI)`.
 
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO_COPIATO_DAL_DB) |
+| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_CON_PERCENTO_20) |
 | ... | ... | ... |
 
 *(Inserisci qui tutti i 12 format proposti con i relativi prezzi calcolati)*.
@@ -286,8 +282,19 @@ Copia il blocco standard (Format nostri, Location esclusa, Prezzo all inclusive,
 """
 
 # NOTA: location_instructions_block è già stato inserito sopra tramite f-string o accodamento
-# Ma per sicurezza lo reiniettiamo nel prompt finale in modo pulito
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_instructions_block)}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
+# Ma per sicurezza lo reiniettiamo nel prompt finale in modo pulito.
+if not location_instructions_block:
+    # Se il DB è spento, inserisco un blocco "silente" che si attiva SOLO se richiesto
+    location_guardrail = """
+    SE (E SOLO SE) L'UTENTE HA CHIESTO UNA LOCATION:
+    Rispondi: "⚠️ Database Location spento. Per ricevere suggerimenti mirati sulle nostre location partner, attiva la spunta **'Abilita Database Location'** nel menu delle impostazioni in alto ⚙️ e riprova."
+    ALTRIMENTI:
+    Non scrivere nulla su location o database spento.
+    """
+    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_guardrail}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
+else:
+    FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
+
 
 # --- 7. CHAT ---
 if "messages" not in st.session_state:
@@ -307,6 +314,7 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
 
     if prompt.lower().strip() in ["reset", "nuovo", "cancella", "stop"]:
         st.session_state.messages = []
+        st.session_state.total_tokens_used = 0 # Resetta anche contatore
         st.rerun()
 
     with st.chat_message("assistant"):
@@ -317,6 +325,8 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                      st.stop()
                 
                 response_text = ""
+                token_usage_info = ""
+                current_total_tokens = 0
 
                 # --- GOOGLE GEMINI ---
                 if provider == "Google Gemini":
@@ -338,6 +348,11 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                     chat = model.start_chat(history=history_gemini[:-1])
                     response = chat.send_message(prompt)
                     response_text = response.text
+                    
+                    # TOKEN COUNTER
+                    if response.usage_metadata:
+                        current_total_tokens = response.usage_metadata.total_token_count
+                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
 
                 # --- GROQ ---
                 elif provider == "Groq":
@@ -355,8 +370,21 @@ if prompt := st.chat_input("Scrivi qui la richiesta..."):
                         temperature=0.0
                     )
                     response_text = resp.choices[0].message.content
+                    
+                    # TOKEN COUNTER
+                    if resp.usage:
+                        current_total_tokens = resp.usage.total_tokens
+                        token_usage_info = f"📊 Questo messaggio: {current_total_tokens} token"
+
+                # AGGIORNA CONTATORE GLOBALE
+                st.session_state.total_tokens_used += current_total_tokens
 
                 st.markdown(response_text, unsafe_allow_html=True) 
+                
+                # Visualizza info token
+                if token_usage_info:
+                    st.caption(f"{token_usage_info} | **Totale Sessione:** {st.session_state.total_tokens_used} token")
+
                 st.session_state.messages.append({"role": "model", "content": response_text})
                 
             except Exception as e:
