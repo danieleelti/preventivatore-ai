@@ -187,10 +187,23 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
         provider = st.selectbox("Scegli Provider", ["Google Gemini", "Groq"])
 
     if provider == "Google Gemini":
-        model_options = ["gemini-3.0-pro-preview", "gemini-2.0-flash-exp", "gemini-1.5-pro-latest", "gemini-1.5-flash"]
-        if "gemini-3.0-pro-preview" not in model_options: model_options.insert(0, "gemini-3.0-pro-preview")
+        model_options = [
+            "gemini-3-pro-preview", # CORRETTO: rimosso .0
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-pro-latest",
+            "gemini-1.5-flash",
+            "gemini-1.0-pro"
+        ]
+        if "gemini-3-pro-preview" not in model_options: model_options.insert(0, "gemini-3-pro-preview")
+        
     elif provider == "Groq":
-        model_options = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        model_options = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it"
+        ]
     
     with col_mod:
         selected_model_name = st.selectbox("Versione Modello", model_options)
@@ -211,7 +224,7 @@ if provider == "Groq":
 
 st.caption(f"Assistente Virtuale Senior - {provider}")
 
-# --- 5. SYSTEM PROMPT (AGGIORNATO CON OBBLIGO TABELLA) ---
+# --- 5. SYSTEM PROMPT ---
 BASE_INSTRUCTIONS = """
 SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 
