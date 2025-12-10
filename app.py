@@ -12,7 +12,7 @@ import pytz
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO (TUTTA LA FORMATTAZIONE ORIGINALE MANTENUTA) ---
+# --- CSS PERSONALIZZATO ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
@@ -108,6 +108,8 @@ except ImportError:
 # --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
+    # FIX: Attiviamo un flag per dire "al prossimo riavvio, riprocessa l'ultimo messaggio"
+    st.session_state.retry_trigger = True
 
 def reset_preventivo():
     """Resetta la chat e svuota i campi di input."""
@@ -223,6 +225,8 @@ if not st.session_state.authenticated:
 # --- 4.b INIZIALIZZAZIONE SESSION STATE ---
 if "enable_locations_state" not in st.session_state:
     st.session_state.enable_locations_state = False 
+if "retry_trigger" not in st.session_state:
+    st.session_state.retry_trigger = False
 
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
@@ -388,6 +392,15 @@ FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{cs
 
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
+
+# FIX: GESTIONE RETRY AUTOMATICO (Quando si accende il DB Location)
+if st.session_state.retry_trigger:
+    # Se c'è un retry pending, recuperiamo l'ultimo messaggio dell'utente
+    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+        prompt_to_process = st.session_state.messages[-1]["content"]
+    st.session_state.retry_trigger = False # Reset immediato per evitare loop
+
+# GESTIONE PULSANTE GENERA
 if generate_btn:
     # --- CONTROLLO OBBLIGATORIETÀ NOME CLIENTE ---
     if not cliente_input:
@@ -414,7 +427,10 @@ for message in st.session_state.messages:
 
 # --- 8. ELABORAZIONE AI ---
 if prompt_to_process:
-    st.session_state.messages.append({"role": "user", "content": prompt_to_process})
+    # FIX: Evita di duplicare il messaggio nella chat se stiamo facendo un retry
+    if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt_to_process:
+        st.session_state.messages.append({"role": "user", "content": prompt_to_process})
+    
     with st.chat_message("user"): st.markdown(prompt_to_process)
 
     # Controllo Location
@@ -426,6 +442,7 @@ if prompt_to_process:
         should_generate = False
         with st.chat_message("assistant"):
             st.warning("⚠️ **Il Database Location è spento.**")
+            # Il click su questo pulsante attiverà 'enable_locations_callback' che setta 'retry_trigger'
             st.button("🟢 ATTIVA DATABASE LOCATION", on_click=enable_locations_callback)
 
     if should_generate:
@@ -435,7 +452,6 @@ if prompt_to_process:
                     if not api_key: st.error("Chiave API mancante."); st.stop()
                     
                     response_text = ""
-                    # rimosso conteggio token
 
                     if provider == "Google Gemini":
                         genai.configure(api_key=api_key)
@@ -449,8 +465,6 @@ if prompt_to_process:
                         chat = model.start_chat(history=history_gemini[:-1])
                         response = chat.send_message(prompt_to_process)
                         response_text = response.text
-                        
-                        # rimossa logica metadata
 
                     elif provider == "Groq":
                         client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
@@ -461,10 +475,8 @@ if prompt_to_process:
                         
                         resp = client.chat.completions.create(model=selected_model_name, messages=messages_groq, temperature=0.0)
                         response_text = resp.choices[0].message.content
-                        # rimossa logica usage
 
                     st.markdown(response_text, unsafe_allow_html=True) 
-                    # rimosso st.caption(token_usage_info)
                     st.session_state.messages.append({"role": "model", "content": response_text})
                     
                 except Exception as e:
