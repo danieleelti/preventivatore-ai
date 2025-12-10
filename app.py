@@ -154,8 +154,19 @@ if not st.session_state.authenticated:
 # --- 4.b CONFIGURAZIONE AI ---
 st.title("🦁 💰 FATTURAGE 💰 🦁")
 
-# Variabile per le istruzioni location (vuota di default)
-location_instructions_block = ""
+# --- GUARDRAIL DI SICUREZZA PER LOCATION ---
+# Se il DB è spento, questa variabile contiene un ORDINE di non inventare nulla.
+location_instructions_block = """
+### ⛔ DATABASE LOCATION DISABILITATO
+Attualmente il database delle location NON è caricato in memoria.
+
+REGOLA TASSATIVA:
+Se l'utente ti chiede suggerimenti su DOVE fare l'evento, location, ville, hotel o spazi:
+1. NON cercare informazioni online.
+2. NON usare la tua conoscenza generale.
+3. NON inventare nomi di location.
+4. RISPONDI ESCLUSIVAMENTE: "⚠️ **Database Location spento.** Per ricevere suggerimenti mirati sulle nostre location partner, attiva la spunta **'Abilita Database Location'** nel menu delle impostazioni in alto ⚙️ e riprova."
+"""
 
 with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
     col_prov, col_mod = st.columns(2)
@@ -180,6 +191,7 @@ with st.expander("⚙️ Impostazioni Provider & Modello AI", expanded=False):
         with st.spinner("Scaricamento Database Location in corso..."):
             location_database = carica_google_sheet('LocationGoogleAi')
             if location_database and locations_module:
+                # SE IL DB VIENE CARICATO, SOVRASCRIVO IL BLOCCO DI SICUREZZA CON I DATI REALI
                 loc_db_string = database_to_string(location_database)
                 location_instructions_block = locations_module.get_location_instructions(loc_db_string)
             elif not location_database:
@@ -246,8 +258,9 @@ Proponi ESATTAMENTE 12 FORMAT divisi in 4 blocchi, seguendo questa struttura num
 ### [Emoji] [Nome]
 [Descrizione basata sul DB]
 
-**FASE 2: SUGGERIMENTO LOCATION** (SOLO SE RICHIESTO E SE ABILITATO NEL MENU).
-Se l'utente chiede location ma non hai dati (perché il db è spento), consiglia di attivare l'opzione "Abilita Database Location" nel menu in alto.
+**FASE 2: SUGGERIMENTO LOCATION**
+Segui rigorosamente le istruzioni sottostanti. Se il database è disabilitato, devi comunicarlo.
+{location_instructions_block}
 
 **FASE 3: TABELLA RIEPILOGATIVA (⛔️ TASSATIVA ⛔️)**
 DEVI OBBLIGATORIAMENTE GENERARE QUESTA TABELLA ALLA FINE DELLA RISPOSTA.
@@ -272,7 +285,9 @@ NON TERMINARE MAI LA RISPOSTA SENZA QUESTA TABELLA.
 Copia il blocco standard (Format nostri, Location esclusa, Prezzo all inclusive, Assicurazione pioggia).
 """
 
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_instructions_block}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
+# NOTA: location_instructions_block è già stato inserito sopra tramite f-string o accodamento
+# Ma per sicurezza lo reiniettiamo nel prompt finale in modo pulito
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS.replace('{location_instructions_block}', location_instructions_block)}\n\n### 💾 [DATABASE FORMATI DA GOOGLE SHEETS]\n\n{csv_data_string}"
 
 # --- 7. CHAT ---
 if "messages" not in st.session_state:
