@@ -83,17 +83,16 @@ st.markdown("""
         border-bottom: 1px solid #eee !important;
     }
     
-    /* Stile Bottoni Sidebar */
+    /* Sidebar Button */
     .stButton button {
-        width: 100%;
-        font-weight: bold !important;
-        border: none !important;
-        height: 45px;
-    }
-    /* Bottone Genera (Rosso) - Targettizzato tramite gerarchia */
-    div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div:nth-child(10) button {
         background-color: #ff4b4b !important;
         color: white !important;
+        font-weight: bold !important;
+        border: none !important;
+        width: 100%;
+        height: 50px;
+        font-size: 16px !important;
+        margin-top: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -104,19 +103,9 @@ try:
 except ImportError:
     locations_module = None
 
-# --- FUNZIONI DI UTILITÀ ---
+# --- FUNZIONE CALLBACK PER ABILITARE LOCATION ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
-
-def reset_preventivo():
-    """Resetta la chat e svuota i campi di input."""
-    st.session_state.messages = []
-    st.session_state.total_tokens_used = 0
-    # Svuota i widget tramite le loro chiavi
-    keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
-    for key in keys_to_clear:
-        if key in st.session_state:
-            st.session_state[key] = ""
 
 # --- 2. GESTIONE DATABASE (GOOGLE SHEETS) ---
 def get_gspread_client():
@@ -242,23 +231,13 @@ with st.sidebar:
     st.markdown("---")
     
     st.subheader("📝 Dati Brief")
-    
-    # PULSANTE NUOVO PREVENTIVO (Appare solo se c'è storia)
-    # len > 1 perché c'è sempre il messaggio di benvenuto
-    if len(st.session_state.messages) > 1:
-        if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
-            reset_preventivo()
-            st.rerun()
-        st.markdown("---")
-
-    # WIDGET CON CHIAVI PER IL RESET
-    cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
+    cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA")
     col_pax, col_data = st.columns(2)
-    with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
-    with col_data: data_evento_input = st.text_input("Data", placeholder="12 Maggio", key="wdg_data")
-    citta_input = st.text_input("Città / Location", placeholder="Milano / Villa Reale", key="wdg_citta")
-    durata_input = st.text_input("Durata Attività", placeholder="es. 2-3 ore", key="wdg_durata")
-    obiettivo_input = st.text_area("Obiettivo / Mood / Note", placeholder="Descrivi l'obiettivo...", height=100, key="wdg_obiettivo")
+    with col_pax: pax_input = st.text_input("N. Pax", placeholder="50")
+    with col_data: data_evento_input = st.text_input("Data", placeholder="12 Maggio")
+    citta_input = st.text_input("Città / Location", placeholder="Milano / Villa Reale")
+    durata_input = st.text_input("Durata Attività", placeholder="es. 2-3 ore")
+    obiettivo_input = st.text_area("Obiettivo / Mood / Note", placeholder="Descrivi l'obiettivo...", height=100)
 
     st.markdown("###")
     generate_btn = st.button("🚀 GENERA PREVENTIVO", type="primary")
@@ -292,7 +271,6 @@ if use_location_db:
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
 else:
-    # Se disabilitato, istruisco l'AI a saltare completamente.
     location_guardrail_prompt = """
     FASE 2: SUGGERIMENTO LOCATION
     ⚠️ ISTRUZIONE TASSATIVA: IL DATABASE LOCATION È SPENTO.
@@ -317,6 +295,7 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 1.  **ICONE:** Inserisci un'emoji SOLO nel titolo del format (es. "### 🍳 Cooking").
 2.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni (Blocchi).
 3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", ecc. come testo semplice. Usa solo l'HTML.
+4.  **DIVIETO DUPLICAZIONE:** Quando usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE SOPRA O SOTTO.
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO - CALCOLO NASCOSTO)
 ⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. NON dire "applico il moltiplicatore". L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
@@ -366,7 +345,7 @@ Devi arrotondare il totale usando questa logica matematica:
 Proponi 12 FORMAT divisi in 4 categorie.
 ⚠️ **PRIORITÀ:** Se l'utente chiede un format specifico, INCLUDILO SEMPRE.
 
-**PER OGNI CATEGORIA, USA QUESTO HTML ESATTO PER IL TITOLO:**
+**PER OGNI CATEGORIA, USA SOLO QUESTO HTML PER IL TITOLO (NON AGGIUNGERE ALTRO):**
 <div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>
 
 Le categorie sono:
@@ -382,7 +361,7 @@ Le categorie sono:
 {location_guardrail_prompt}
 
 **FASE 3: TABELLA RIEPILOGATIVA (TASSATIVA)**
-Usa questo HTML per il titolo:
+Usa ESCLUSIVAMENTE questo HTML per il titolo (niente Markdown):
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {data_evento_input} | {citta_input}</span></div>
 
 **LINK SCHEDA TECNICA (REGOLA SUPREMA):**
