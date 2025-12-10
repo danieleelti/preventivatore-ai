@@ -112,7 +112,6 @@ def enable_locations_callback():
 def reset_preventivo():
     """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
-    st.session_state.total_tokens_used = 0
     # Svuota i widget tramite le loro chiavi
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
     for key in keys_to_clear:
@@ -224,8 +223,6 @@ if not st.session_state.authenticated:
 # --- 4.b INIZIALIZZAZIONE SESSION STATE ---
 if "enable_locations_state" not in st.session_state:
     st.session_state.enable_locations_state = False 
-if "total_tokens_used" not in st.session_state:
-    st.session_state.total_tokens_used = 0
 
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
@@ -438,7 +435,7 @@ if prompt_to_process:
                     if not api_key: st.error("Chiave API mancante."); st.stop()
                     
                     response_text = ""
-                    token_usage_info = ""
+                    # rimosso conteggio token
 
                     if provider == "Google Gemini":
                         genai.configure(api_key=api_key)
@@ -453,9 +450,7 @@ if prompt_to_process:
                         response = chat.send_message(prompt_to_process)
                         response_text = response.text
                         
-                        if response.usage_metadata:
-                            tot = response.usage_metadata.total_token_count
-                            token_usage_info = f"📊 Token: {tot}"
+                        # rimossa logica metadata
 
                     elif provider == "Groq":
                         client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
@@ -466,10 +461,10 @@ if prompt_to_process:
                         
                         resp = client.chat.completions.create(model=selected_model_name, messages=messages_groq, temperature=0.0)
                         response_text = resp.choices[0].message.content
-                        if resp.usage: token_usage_info = f"📊 Token: {resp.usage.total_tokens}"
+                        # rimossa logica usage
 
                     st.markdown(response_text, unsafe_allow_html=True) 
-                    if token_usage_info: st.caption(token_usage_info)
+                    # rimosso st.caption(token_usage_info)
                     st.session_state.messages.append({"role": "model", "content": response_text})
                     
                 except Exception as e:
