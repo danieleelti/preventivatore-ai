@@ -299,7 +299,7 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (PULITO DA FASI E META-TESTO) ---
+# --- 5. SYSTEM PROMPT (PULITO E AGGIORNATO CON VENEZIA) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
@@ -327,7 +327,7 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 **2. MOLTIPLICATORI:**
 * **M_PAX:** <5: x3.20 | 5-10: x1.60 | 11-20: x1.05 | 21-30: x0.95 | 31-60: x0.90 | 61-90: x0.90 | 91-150: x0.85 | 151-250: x0.70 | >250: x0.60
 * **M_STAGIONE:** Alta (Mag,Giu,Lug,Set,Ott,Dic): x1.10 | Bassa: x1.02
-* **M_LOCATION:** MI: x1.00 | RM: x0.95 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
+* **M_LOCATION:** MI: x1.00 | RM: x0.95 | Venezia: x1.30 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
 * **M_DURATA:** 0-2h: x1.00 | Mezza: x1.10 | Intera: x1.20
 
 **3. FORMULA:** `PREZZO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * PAX`
