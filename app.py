@@ -253,9 +253,16 @@ Se l'utente chiede location ma non hai dati (perché il db è spento), consiglia
 DEVI OBBLIGATORIAMENTE GENERARE QUESTA TABELLA ALLA FINE DELLA RISPOSTA.
 NON TERMINARE MAI LA RISPOSTA SENZA QUESTA TABELLA.
 
+**⚠️ REGOLA LINK SCHEDA TECNICA (CRITICO):**
+Il link DEVE essere formattato ESATTAMENTE così: `[NomeFormat.pdf](URL_DAL_DB)`.
+* Prendi l'URL dalla colonna "Link", "URL", o "Scheda Tecnica" del database.
+* Il testo del link deve essere "NomeFormat.pdf".
+* Esempio CORRETTO: `[Cooking.pdf](https://www.teambuilding.it/wp-content/uploads/Cooking.pdf)`
+* Esempio SBAGLIATO: `[Scheda](...)` o solo l'URL nudo.
+
 | Nome Format | Costo Totale (+IVA) | Scheda Tecnica |
 | :--- | :--- | :--- |
-| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL) |
+| 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_DAL_DB) |
 | ... | ... | ... |
 
 *(Inserisci qui tutti i 12 format proposti con i relativi prezzi calcolati)*.
