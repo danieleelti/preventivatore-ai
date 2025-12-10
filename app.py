@@ -3,13 +3,13 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import csv
 import os
+import random  # <--- NUOVO IMPORT PER GLI AFORISMI
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import pytz
 
 # --- GESTIONE IMPORT LIBRERIE OPZIONALI ---
-# Importiamo OpenAI solo se serve, e Groq nativo per stabilità
 from openai import OpenAI
 try:
     from groq import Groq
@@ -217,6 +217,7 @@ if not st.session_state.authenticated:
     with c2:
         st.title("🔒 Area Riservata")
         pwd = st.text_input("Inserisci Password Staff", type="password")
+        
         if st.button("Accedi"):
             users_db = st.secrets.get("passwords", {})
             if pwd in users_db:
@@ -239,11 +240,24 @@ if "total_tokens_used" not in st.session_state:
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
     
-    # SALUTO PERSONALIZZATO
-    if st.session_state.username == "Francesca":
-        welcome_msg = "Ciao squirtina..." 
-    else:
-        welcome_msg = f"Ciao **{st.session_state.username}**! Usa la barra laterale a sinistra per compilare i dati."
+    # --- LISTA AFORISMI AZIENDALI SIMPATICI ---
+    aforismi = [
+        "Il lavoro di squadra è essenziale: ti permette di dare la colpa a qualcun altro.",
+        "Una riunione è un evento in cui si tengono le minute e si perdono le ore.",
+        "Non rimandare a domani quello che puoi far fare a uno stagista oggi.",
+        "Per aspera ad fattura.",
+        "Lavorare duro non ha mai ucciso nessuno, ma perché rischiare?",
+        "Il cliente ha sempre ragione, tranne quando chiede lo sconto.",
+        "La creatività è l'arte di nascondere le proprie fonti.",
+        "Se tutto sembra sotto controllo, non stai andando abbastanza veloce.",
+        "Deadline: quella linea immaginaria che oltrepassiamo correndo.",
+        "Errare è umano, dare la colpa al computer è ancora più umano.",
+        "Se non puoi convincerli, confondili."
+    ]
+    # -------------------------------------------
+    
+    quote = random.choice(aforismi)
+    welcome_msg = f"Ciao **{st.session_state.username}**! 👋\n\n_{quote}_\n\nUsa la barra laterale a sinistra per compilare i dati."
         
     st.session_state.messages.append({"role": "model", "content": welcome_msg})
 
@@ -419,11 +433,11 @@ if generate_btn:
     
     prompt_to_process = f"Ciao, sono {cliente_input}. Vorrei un preventivo per {pax_input} persone, data {data_evento_input}, a {citta_input}. Durata: {durata_input}. Obiettivo: {obiettivo_input}."
     
-    welcome_user = f"Ciao **{st.session_state.username}**!"
-    if st.session_state.username == "Francesca":
-            welcome_user = "Ciao squirtina..."
-            
-    st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
+    # SALVATAGGIO PRIMO MESSAGGIO IN SESSIONE (con aforisma)
+    # Nota: il messaggio di benvenuto è già stato aggiunto all'inizializzazione.
+    
+    # Aggiungi messaggio utente alla chat
+    st.session_state.messages.append({"role": "user", "content": prompt_to_process})
 
 chat_input = st.chat_input("Chiedi una modifica...")
 if chat_input: prompt_to_process = chat_input
@@ -436,10 +450,15 @@ for message in st.session_state.messages:
 
 # --- 8. ELABORAZIONE AI ---
 if prompt_to_process:
+    # Se il messaggio non è già stato aggiunto (caso input manuale o retry), aggiungilo
     if not st.session_state.messages or st.session_state.messages[-1]["content"] != prompt_to_process:
         st.session_state.messages.append({"role": "user", "content": prompt_to_process})
     
-    with st.chat_message("user"): st.markdown(prompt_to_process)
+    # Non renderizziamo di nuovo il messaggio utente se siamo nel loop di generazione, 
+    # perché è già stato renderizzato dal ciclo `for` sopra se aggiunto allo state.
+    # Ma per sicurezza visuale immediata nel caso di chat input:
+    if chat_input:
+       with st.chat_message("user"): st.markdown(prompt_to_process)
 
     keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
     is_location_request = any(k in prompt_to_process.lower() for k in keywords_location)
