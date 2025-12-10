@@ -304,7 +304,7 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (GEMINI CLASSIC) ---
+# --- 5. SYSTEM PROMPT (AGGIORNATO CON LOGICA STRETTA) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
@@ -315,16 +315,52 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 1.  **USO DEL DATABASE:** Usa SOLO i dati caricati (NON inventare).
 2.  **QUALIFICAZIONE:** Se il brief è insufficiente, chiedi info.
 
-### 🔢 CALCOLO PREVENTIVI (ALGORITMO NASCOSTO)
-⚠️ **REGOLA SUPREMA:** NON spiegare la formula. Mostra solo il prezzo finale.
+### 🔢 CALCOLO PREVENTIVI (ALGORITMO STRICT MODE)
+⚠️ **IMPORTANTE:** Esegui questi calcoli matematici con estrema precisione internamente.
 
-* **P_BASE:** Dal database.
-* **MOLTIPLICATORI:**
-    * Pax < 5: x3.20 | 5-10: x1.60 | 11-20: x1.05 | 21-30: x0.95 | 31-60: x0.90 | 61-90: x0.90 | 91-150: x0.85 | 151-250: x0.70 | >250: x0.60
-    * Stagione Alta (Mag-Dic escluso Nov): x1.10 | Bassa (Gen-Apr, Nov): x1.02
-    * Location: MI: x1.00 | RM: x0.95 | VE: x1.30 | Centro: x1.05 | Altro: x1.15 | Isole: x1.30
-    * Durata 0-2h: x1.00 | Mezza: x1.10 | Intera: x1.20
-* **FORMULA:** `(P_BASE * MOLTIPLICATORI) * PAX` -> Arrotondato ai 100€ superiori. Minimo 1800€.
+**PASSO 1: IDENTIFICAZIONE VARIABILI**
+* **P_BASE:** Prezzo unitario trovato nel database CSV per il format specifico.
+* **NUM_PAX:** {pax_input} (converti in numero intero).
+* **MESE_EVENTO:** Estrai il mese da "{data_evento_input}".
+* **ZONA_EVENTO:** Estrai la zona da "{citta_input}".
+
+**PASSO 2: DETERMINA I MOLTIPLICATORI (M)**
+* **M_PAX (Scegli in base a NUM_PAX):**
+    * 0-4 pax: x3.20
+    * 5-10 pax: x1.60
+    * 11-20 pax: x1.05
+    * 21-30 pax: x0.95
+    * 31-60 pax: x0.90
+    * 61-90 pax: x0.90
+    * 91-150 pax: x0.85
+    * 151-250 pax: x0.70
+    * >250 pax: x0.60
+
+* **M_STAGIONE (Scegli in base a MESE_EVENTO):**
+    * BASSA (Gen, Feb, Mar, Apr, Nov): x1.02
+    * ALTA (Mag, Giu, Lug, Ago, Set, Ott, Dic): x1.10
+
+* **M_LOCATION (Scegli in base a ZONA_EVENTO):**
+    * Milano e Hinterland: x1.00
+    * Roma: x0.95
+    * Venezia (Laguna): x1.30
+    * Isole (Sicilia/Sardegna): x1.30
+    * Centro Italia (Toscana, Umbria, Marche): x1.05
+    * Tutto il resto d'Italia: x1.15
+
+* **M_DURATA (Scegli in base a "{durata_input}"):**
+    * Standard (fino a 2h/2.5h): x1.00
+    * Mezza Giornata (approx 3-4h): x1.10
+    * Intera Giornata / Full Day: x1.20
+
+**PASSO 3: CALCOLO MATEMATICO**
+Formula: `(P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * NUM_PAX`
+
+**PASSO 4: REGOLE FINALI**
+1. **ARROTONDAMENTO:** Il totale va arrotondato sempre ai 100€ superiori (es. 2.120€ diventa 2.200€).
+2. **MINIMO GARANTITO:** Se il totale calcolato è inferiore a **1.800€**, il prezzo finale DEVE essere 1.800€.
+
+---
 
 ### 🚦 ORDINE DI OUTPUT (OBBLIGATORIO)
 
