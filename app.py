@@ -24,7 +24,7 @@ st.markdown("""
         line-height: 1.6 !important;
     }
     
-    /* TITOLI FORMAT (H3) - RIDIMENSIONATI */
+    /* TITOLI FORMAT (H3) */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 17px !important;
@@ -35,7 +35,7 @@ st.markdown("""
         text-transform: uppercase !important;
     }
 
-    /* Intestazioni Blocchi */
+    /* Intestazioni Blocchi (HTML generato dall'AI) */
     .block-header {
         background-color: #f8f9fa;
         border-left: 5px solid #ff4b4b;
@@ -257,28 +257,20 @@ with st.sidebar:
         api_key = st.secrets.get("GOOGLE_API_KEY") if provider == "Google Gemini" else st.secrets.get("GROQ_API_KEY")
         if not api_key: st.error(f"⚠️ Manca API Key per {provider}")
 
-# --- GESTIONE LOGICA LOCATION ---
-location_instructions_block = ""
-location_guardrail_prompt = ""
-
+# --- GESTIONE LOGICA LOCATION (SOLO CARICAMENTO DATI) ---
+# Se spento, la variabile è vuota. Se acceso, contiene i dati.
+# NON ESISTE PIÙ LA "FASE 2" NEL PROMPT.
+location_data_string = ""
 if use_location_db:
     with st.spinner("Caricamento Location..."):
         location_database = carica_google_sheet('LocationGoogleAi')
         if location_database and locations_module:
             loc_db_string = database_to_string(location_database)
-            location_instructions_block = locations_module.get_location_instructions(loc_db_string)
-            location_guardrail_prompt = f"FASE 2: SUGGERIMENTO LOCATION\n{location_instructions_block}"
+            # Carichiamo i dati in una variabile che useremo SE l'AI decide di parlarne, 
+            # ma senza forzare una "Fase".
+            location_data_string = f"\n### 🏰 [DATABASE LOCATION DISPONIBILI]\n{locations_module.get_location_instructions(loc_db_string)}\n"
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
-else:
-    location_guardrail_prompt = """
-    FASE 2: SUGGERIMENTO LOCATION
-    ⚠️ ISTRUZIONE TASSATIVA: IL DATABASE LOCATION È SPENTO.
-    NON SCRIVERE NULLA IN QUESTA FASE.
-    NON INVENTARE LOCATION.
-    NON SCRIVERE 'NESSUNA LOCATION TROVATA'.
-    SALTA DIRETTAMENTE ALLA TABELLA RIEPILOGATIVA.
-    """
 
 # --- 5. SYSTEM PROMPT ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
@@ -294,58 +286,45 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 ### 🎨 REGOLE VISUALI (TASSATIVE)
 1.  **ICONE:** Inserisci un'emoji SOLO nel titolo del format (es. "### 🍳 Cooking").
 2.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni (Blocchi).
-3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", ecc. come testo semplice. Usa solo l'HTML.
-4.  **DIVIETO DUPLICAZIONE:** Quando usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE SOPRA O SOTTO.
+3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", "FASE 1", "FASE 2" ecc. come testo semplice.
+4.  **DIVIETO DUPLICAZIONE:** Se usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE.
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO - CALCOLO NASCOSTO)
-⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. NON dire "applico il moltiplicatore". L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
+⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
 
-**1. IDENTIFICA I MOLTIPLICATORI:**
+**1. IDENTIFICA P_BASE:**
+Trova la colonna 'Prezzo' o 'P_Base' nel database per il format scelto.
+
+**2. APPLICA I MOLTIPLICATORI:**
 * **M_PAX (Numero Partecipanti):**
-    * < 5 pax: x3.20
-    * 5-10 pax: x1.60
-    * 11-20 pax: x1.05
-    * 21-30 pax: x0.95
-    * 31-60 pax: x0.90
-    * 61-90 pax: x0.90
-    * 91-150 pax: x0.85
-    * 151-250 pax: x0.70
-    * > 250 pax: x0.60
-* **M_STAGIONE:**
-    * Maggio, Giugno, Luglio, Settembre, Ottobre, Dicembre: x1.10
-    * Gennaio, Febbraio, Marzo, Aprile, Agosto, Novembre: x1.02
-* **M_LOCATION:**
-    * Milano (città): x1.00
-    * Roma (città): x0.95
-    * Centro Italia: x1.05
-    * Nord/Sud Italia (Fuori MI/RM): x1.15
-    * Isole: x1.30
+    * < 5 pax: x3.20 | 5-10 pax: x1.60 | 11-20 pax: x1.05 | 21-30 pax: x0.95
+    * 31-60 pax: x0.90 | 61-90 pax: x0.90 | 91-150 pax: x0.85
+    * 151-250 pax: x0.70 | > 250 pax: x0.60
+* **M_STAGIONE (in base alla Data):**
+    * Alta (Mag, Giu, Lug, Set, Ott, Dic): x1.10
+    * Bassa (Gen, Feb, Mar, Apr, Ago, Nov): x1.02
+* **M_LOCATION (in base alla Città):**
+    * Milano: x1.00 | Roma: x0.95 | Centro: x1.05 | Nord/Sud (No MI/RM): x1.15 | Isole: x1.30
 * **M_DURATA:**
-    * Fino a 2h: x1.00
-    * Mezza giornata (2-4h): x1.10
-    * Giornata intera (>4h): x1.20
+    * 0-2h: x1.00 | Mezza giornata: x1.10 | Giornata intera: x1.20
 
-**2. APPLICA LA FORMULA BASE:**
-`PREZZO_GREZZO = (Prezzo_Listino_CSV * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * Numero_Pax`
+**3. FORMULA:**
+`PREZZO_CALCOLATO = (P_BASE * M_PAX * M_STAGIONE * M_LOCATION * M_DURATA) * NUMERO_PAX`
 
-**3. REGOLA MINIMUM SPENDING:**
-Se `PREZZO_GREZZO` è inferiore a € 1.800,00 -> Il prezzo diventa **€ 1.800,00**.
+**4. CONTROLLO MINIMUM SPENDING:**
+Se `PREZZO_CALCOLATO` < 1800, allora `PREZZO_CALCOLATO` = 1800.
 
-**4. REGOLA ARROTONDAMENTO (CRITICO):**
-Devi arrotondare il totale usando questa logica matematica:
-`PREZZO_FINALE = ARROTONDA((PREZZO_GREZZO + 60) / 100) * 100`
-*(In pratica: se le ultime due cifre sono 00-39 arrotonda per difetto al 100, se sono 40-99 arrotonda per eccesso al 100).*
+**5. ARROTONDAMENTO (TASSATIVO):**
+Applica questa formula: `PREZZO_FINALE = ARROTONDA((PREZZO_CALCOLATO + 60) / 100) * 100`
 
 ---
-### 🚦 FLUSSO DI LAVORO (ORDINE OBBLIGATORIO)
+### 🚦 STRUTTURA DELLA RISPOSTA (SEQUENZA OBBLIGATORIA)
 
-**FASE 0: CHECK INFORMAZIONI**
-
-**FASE 1: LA REGOLA DEL 12 (Presentazione Format)**
+**1. PRESENTAZIONE FORMAT (LA REGOLA DEL 12)**
 Proponi 12 FORMAT divisi in 4 categorie.
 ⚠️ **PRIORITÀ:** Se l'utente chiede un format specifico, INCLUDILO SEMPRE.
 
-**PER OGNI CATEGORIA, USA SOLO QUESTO HTML PER IL TITOLO (NON AGGIUNGERE ALTRO):**
+**PER OGNI CATEGORIA, USA SOLO QUESTO HTML PER IL TITOLO:**
 <div class="block-header"><span class="block-title">TITOLO CATEGORIA</span><span class="block-claim">CLAIM</span></div>
 
 Le categorie sono:
@@ -356,12 +335,12 @@ Le categorie sono:
 
 **Struttura Singolo Format:**
 ### [Emoji] [Nome Format]
-[Descrizione di max 2-3 righe accattivanti. Inizia se possibile con una emoji contestualizzata.]
+[Descrizione di max 2-3 righe accattivanti. Inizia con una emoji contestualizzata.]
 
-{location_guardrail_prompt}
+*(NB: Se hai dati sulle location, e solo se pertinenti, puoi accennarli brevemente qui o dopo, MA SENZA CREARE UNA SEZIONE "FASE 2" SEPARATA).*
 
-**FASE 3: TABELLA RIEPILOGATIVA (TASSATIVA)**
-Usa ESCLUSIVAMENTE questo HTML per il titolo (niente Markdown):
+**2. TABELLA RIEPILOGATIVA (TASSATIVA)**
+Usa ESCLUSIVAMENTE questo HTML per il titolo:
 <div class="block-header"><span class="block-title">TABELLA RIEPILOGATIVA</span><span class="block-claim">Brief: {pax_input} pax | {data_evento_input} | {citta_input}</span></div>
 
 **LINK SCHEDA TECNICA (REGOLA SUPREMA):**
@@ -373,7 +352,7 @@ Usa ESCLUSIVAMENTE questo HTML per il titolo (niente Markdown):
 | :--- | :--- | :--- |
 | 👨‍🍳 Cooking | € 2.400,00 | [Cooking.pdf](URL_ESATTO) |
 
-**FASE 4: INFO UTILI (OBBLIGATORIO)**
+**3. INFO UTILI (OBBLIGATORIO)**
 Riporta questo blocco ESATTAMENTE così com'è:
 
 ### Informazioni Utili
@@ -391,7 +370,8 @@ Riporta questo blocco ESATTAMENTE così com'è:
 ✔️ **Chiedici anche** servizio video/foto e gadget.
 """
 
-FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
+# Se location_data_string è vuota, l'AI non saprà nulla delle location.
+FULL_SYSTEM_PROMPT = f"{BASE_INSTRUCTIONS}\n\n{location_data_string}\n\n### 💾 [DATABASE FORMATI]\n\n{csv_data_string}"
 
 # --- 6. GESTIONE INPUT ---
 prompt_to_process = None
@@ -421,7 +401,7 @@ if prompt_to_process:
     st.session_state.messages.append({"role": "user", "content": prompt_to_process})
     with st.chat_message("user"): st.markdown(prompt_to_process)
 
-    # Controllo Location
+    # Controllo Location (Semplificato: solo avviso bottone se DB spento)
     keywords_location = ["location", "dove", "villa", "castello", "spazio", "hotel", "tenuta", "cascina", "posto"]
     is_location_request = any(k in prompt_to_process.lower() for k in keywords_location)
     
