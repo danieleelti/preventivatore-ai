@@ -35,7 +35,7 @@ st.markdown("""
     /* TITOLI FORMAT (H3) - RIDIMENSIONATI */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
-        font-size: 17px !important; /* Era troppo grande, ora è giusto */
+        font-size: 17px !important;
         font-weight: 800 !important;
         color: #000000 !important;
         margin-top: 20px !important; 
@@ -246,7 +246,6 @@ with st.sidebar:
         if not api_key: st.error(f"⚠️ Manca API Key per {provider}")
 
 # --- GESTIONE LOGICA LOCATION ---
-# Se il checkbox è attivo, carico il DB. Altrimenti, la variabile per il prompt è un comando di "SILENZIO".
 location_instructions_block = ""
 location_guardrail_prompt = ""
 
@@ -255,7 +254,6 @@ if use_location_db:
         location_database = carica_google_sheet('LocationGoogleAi')
         if location_database and locations_module:
             loc_db_string = database_to_string(location_database)
-            # Qui costruiamo il blocco con i dati veri
             location_instructions_block = locations_module.get_location_instructions(loc_db_string)
             location_guardrail_prompt = f"FASE 2: SUGGERIMENTO LOCATION\n{location_instructions_block}"
         elif not location_database:
@@ -287,8 +285,8 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 2.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni (Blocchi).
 3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", ecc. come testo semplice. Usa solo l'HTML.
 
-### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO)
-Usa rigorosamente questi passaggi. NON inventare prezzi.
+### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO - CALCOLO NASCOSTO)
+⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. NON dire "applico il moltiplicatore". L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
 
 **1. IDENTIFICA I MOLTIPLICATORI:**
 * **M_PAX (Numero Partecipanti):**
@@ -346,7 +344,7 @@ Le categorie sono:
 
 **Struttura Singolo Format:**
 ### [Emoji] [Nome Format]
-[Descrizione breve basata sul DB]
+[Descrizione di max 2-3 righe accattivanti. Inizia se possibile con una emoji contestualizzata.]
 
 {location_guardrail_prompt}
 
