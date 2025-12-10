@@ -12,13 +12,13 @@ import pytz
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO ---
+# --- CSS PERSONALIZZATO (TUTTA LA FORMATTAZIONE ORIGINALE MANTENUTA) ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
     div[data-testid="stChatMessage"] { background-color: #ffffff !important; border: 1px solid #f0f2f6; border-radius: 10px; padding: 15px; }
     
-    /* Stile comune per testo */
+    /* Font e Testi */
     div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] div {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 15px !important;
@@ -37,7 +37,7 @@ st.markdown("""
         text-transform: uppercase !important;
     }
 
-    /* Intestazioni Blocchi (HTML generato dall'AI) */
+    /* BLOCCHI ROSSI (Titoli Categorie e Tabella) */
     .block-header {
         background-color: #f8f9fa;
         border-left: 5px solid #ff4b4b;
@@ -302,7 +302,7 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT ---
+# --- 5. SYSTEM PROMPT (AGGIORNATO CON REGOLE EMOJI E GROQ) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
@@ -313,11 +313,12 @@ SEI IL SENIOR EVENT MANAGER DI TEAMBUILDING.IT. Rispondi in Italiano.
 1.  **USO DEL DATABASE:** Usa SOLO i dati caricati (NON inventare).
 2.  **QUALIFICAZIONE:** Se il brief è insufficiente, chiedi info.
 
-### 🎨 REGOLE VISUALI (TASSATIVE)
-1.  **ICONE:** Inserisci un'emoji SOLO nel titolo del format (es. "### 🍳 Cooking").
-2.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni (Blocchi).
-3.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", ecc. come testo semplice. Usa solo l'HTML.
-4.  **DIVIETO DUPLICAZIONE:** Se usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE.
+### 🎨 REGOLE VISUALI (TASSATIVE PER GEMINI E GROQ)
+1.  **ICONE:** Inserisci un'emoji SOLO ed ESCLUSIVAMENTE prima del titolo del format (es. "### 🍳 Cooking").
+2.  **DIVIETO EMOJI NEL TESTO:** È SEVERAMENTE VIETATO usare emoji nel corpo delle descrizioni. Usa solo testo pulito.
+3.  **HTML:** Usa ESCLUSIVAMENTE il codice HTML fornito per i titoli delle sezioni (Blocchi).
+4.  **DIVIETO:** NON scrivere mai "BLOCCO 1", "BLOCCO 2", ecc. come testo semplice. Usa solo l'HTML.
+5.  **DIVIETO DUPLICAZIONE:** Se usi il blocco HTML per il titolo, NON SCRIVERE ANCHE IL TITOLO NORMALE.
 
 ### 🔢 CALCOLO PREVENTIVI (ALGORITMO OBBLIGATORIO - CALCOLO NASCOSTO)
 ⚠️ **REGOLA SUPREMA:** NON spiegare MAI la formula matematica. NON mostrare i passaggi intermedi. L'output deve contenere SOLO il nome del format e il prezzo finale nella tabella.
@@ -367,7 +368,7 @@ Le categorie sono:
 
 **Struttura Singolo Format:**
 ### [Emoji] [Nome Format]
-[Descrizione di max 2-3 righe accattivanti. Inizia con una emoji contestualizzata.]
+[Descrizione di max 2-3 righe accattivanti. TESTO PULITO SENZA EMOJI.]
 
 {location_guardrail_prompt}
 
@@ -487,7 +488,7 @@ if prompt_to_process:
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
-# --- PULSANTE SALVATAGGIO ---
+# --- PULSANTE SALVATAGGIO (SOLO LUI, COME RICHIESTO) ---
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "model":
     last_response = st.session_state.messages[-1]["content"]
     st.divider()
