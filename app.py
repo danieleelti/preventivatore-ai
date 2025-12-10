@@ -15,8 +15,10 @@ st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 # --- CSS PERSONALIZZATO ---
 st.markdown("""
 <style>
-    /* Stile generale messaggi */
+    /* Stile generale messaggi CHAT */
     div[data-testid="stChatMessage"] { background-color: #ffffff !important; border: 1px solid #f0f2f6; border-radius: 10px; padding: 15px; }
+    
+    /* Stile comune per testo */
     div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li, div[data-testid="stChatMessage"] div {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 15px !important;
@@ -24,7 +26,7 @@ st.markdown("""
         line-height: 1.6 !important;
     }
     
-    /* TITOLI FORMAT (H3) - RIDIMENSIONATI */
+    /* TITOLI FORMAT (H3) */
     div[data-testid="stChatMessage"] h3 {
         font-family: 'Calibri', 'Arial', sans-serif !important;
         font-size: 17px !important;
@@ -169,7 +171,7 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
-# --- NUOVA FUNZIONE DI SALVATAGGIO (INTEGRATA) ---
+# --- FUNZIONE DI SALVATAGGIO ---
 def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
     """Salva una riga nel foglio PreventiviInviatiAi."""
     client = get_gspread_client()
@@ -489,13 +491,9 @@ if prompt_to_process:
 if st.session_state.messages and st.session_state.messages[-1]["role"] == "model":
     last_response = st.session_state.messages[-1]["content"]
     st.divider()
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        if st.button("💾 SALVA SU GOOGLE SHEET", use_container_width=True):
-            if salva_preventivo_su_db(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
-                st.success(f"✅ Preventivo per {cliente_input} salvato!")
-            else:
-                st.error("Errore salvataggio.")
-    with c2:
-        with st.expander("📋 CLICCA QUI PER COPIARE IL TESTO"):
-            st.code(last_response, language="markdown")
+    # Solo pulsante di salvataggio
+    if st.button("💾 SALVA SU GOOGLE SHEET", use_container_width=True):
+        if salva_preventivo_su_db(cliente_input, st.session_state.username, pax_input, data_evento_input, citta_input, last_response):
+            st.success(f"✅ Preventivo per {cliente_input} salvato!")
+        else:
+            st.error("Errore salvataggio.")
