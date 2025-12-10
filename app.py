@@ -1,7 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
-from openai import OpenAI
 import csv
 import os
 import gspread
@@ -9,10 +8,18 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 import pytz
 
+# --- GESTIONE IMPORT LIBRERIE OPZIONALI ---
+# Importiamo OpenAI solo se serve, e Groq nativo per stabilità
+from openai import OpenAI
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
+
 # --- 1. CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="FATTURAGE", page_icon="🦁💰", layout="wide")
 
-# --- CSS PERSONALIZZATO ---
+# --- CSS PERSONALIZZATO (COMPLETO) ---
 st.markdown("""
 <style>
     /* Stile generale messaggi CHAT */
@@ -108,9 +115,11 @@ except ImportError:
 # --- FUNZIONI DI UTILITÀ ---
 def enable_locations_callback():
     st.session_state.enable_locations_state = True
+    # Flag fondamentale per dire "al prossimo riavvio, riprocessa l'ultimo messaggio"
     st.session_state.retry_trigger = True
 
 def reset_preventivo():
+    """Resetta la chat e svuota i campi di input."""
     st.session_state.messages = []
     st.session_state.total_tokens_used = 0
     keys_to_clear = ["wdg_cliente", "wdg_pax", "wdg_data", "wdg_citta", "wdg_durata", "wdg_obiettivo"]
@@ -148,6 +157,7 @@ def carica_google_sheet(sheet_name):
         return None
 
 def database_to_string(database_list):
+    """Converte la lista di dizionari in stringa per il prompt con sanitizzazione link."""
     if not database_list: return "Nessun dato disponibile."
     try:
         if not isinstance(database_list[0], dict): return "" 
@@ -156,6 +166,7 @@ def database_to_string(database_list):
             clean_riga = {}
             for k, v in riga.items():
                 val_str = str(v) if v is not None else ""
+                # Pulizia automatica spazi nei link
                 if val_str.strip().lower().startswith("http") and " " in val_str:
                     val_str = val_str.replace(" ", "%20")
                 clean_riga[k] = val_str
@@ -168,7 +179,9 @@ def database_to_string(database_list):
         return header + "\n" + "\n".join(rows)
     except Exception: return ""
 
+# --- FUNZIONE DI SALVATAGGIO ---
 def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
+    """Salva una riga nel foglio PreventiviInviatiAi."""
     client = get_gspread_client()
     if not client: return False
     try:
@@ -177,6 +190,8 @@ def salva_preventivo_su_db(cliente, utente, pax, data_evento, citta, contenuto):
         now = datetime.now(tz_ita)
         data_oggi = now.strftime("%Y-%m-%d")
         ora_oggi = now.strftime("%H:%M:%S")
+        
+        # Colonne: Nome Cliente | Utente | Data Prev | Ora Prev | Pax | Data Evento | Città | Contenuto
         row = [cliente, utente, data_oggi, ora_oggi, pax, data_evento, citta, contenuto]
         sheet.append_row(row)
         return True
@@ -207,7 +222,7 @@ if not st.session_state.authenticated:
             if pwd in users_db:
                 st.session_state.authenticated = True
                 st.session_state.username = users_db[pwd]
-                st.session_state.messages = [] 
+                st.session_state.messages = [] # Reset chat al login
                 st.rerun()
             else:
                 st.error("Password errata")
@@ -223,10 +238,13 @@ if "total_tokens_used" not in st.session_state:
 
 if "messages" not in st.session_state or not st.session_state.messages:
     st.session_state.messages = []
+    
+    # SALUTO PERSONALIZZATO
     if st.session_state.username == "Francesca":
         welcome_msg = "Ciao squirtina..." 
     else:
         welcome_msg = f"Ciao **{st.session_state.username}**! Usa la barra laterale a sinistra per compilare i dati."
+        
     st.session_state.messages.append({"role": "model", "content": welcome_msg})
 
 # --- SIDEBAR ---
@@ -237,12 +255,14 @@ with st.sidebar:
     
     st.subheader("📝 Dati Brief")
     
+    # PULSANTE NUOVO PREVENTIVO
     if len(st.session_state.messages) > 1:
         if st.button("🔄 NUOVO PREVENTIVO", type="secondary"):
             reset_preventivo()
             st.rerun()
         st.markdown("---")
 
+    # WIDGET INPUT
     cliente_input = st.text_input("Nome Cliente *", placeholder="es. Azienda Rossi SpA", key="wdg_cliente")
     col_pax, col_data = st.columns(2)
     with col_pax: pax_input = st.text_input("N. Pax", placeholder="50", key="wdg_pax")
@@ -283,6 +303,7 @@ if use_location_db:
         elif not location_database:
             st.sidebar.warning("⚠️ Errore caricamento Location")
 else:
+    # Se disabilitato, istruisco l'AI a saltare completamente.
     location_guardrail_prompt = """
     ISTRUZIONE TASSATIVA LOCATION: IL DATABASE LOCATION È SPENTO.
     NON SCRIVERE NULLA SU LOCATION.
@@ -290,7 +311,7 @@ else:
     PASSA DIRETTAMENTE ALLA TABELLA.
     """
 
-# --- 5. SYSTEM PROMPT (AGGIORNATO CON REGOLE 4+4+2+2 E TABELLA IVA) ---
+# --- 5. SYSTEM PROMPT (VERSIONE FINALE BLINDATA) ---
 context_brief = f"DATI BRIEF: Cliente: {cliente_input}, Pax: {pax_input}, Data: {data_evento_input}, Città: {citta_input}, Durata: {durata_input}, Obiettivo: {obiettivo_input}."
 
 BASE_INSTRUCTIONS = f"""
@@ -361,7 +382,7 @@ Ciao Mario, grazie per la richiesta... (Intro discorsiva)
 ### 🍳 Cooking Team Building
 Descrizione del format cooking...
 
-(Inserire altri format Best Seller...)
+(Inserire altri 3 format Best Seller...)
 
 <div class="block-header"><span class="block-title">LE NOVITÀ</span><span class="block-claim">Freschi di lancio</span></div>
 
@@ -400,7 +421,7 @@ if generate_btn:
     
     welcome_user = f"Ciao **{st.session_state.username}**!"
     if st.session_state.username == "Francesca":
-            welcome_user = "Ciao Fra..."
+            welcome_user = "Ciao squirtina..."
             
     st.session_state.messages = [{"role": "model", "content": f"{welcome_user} Elaboro la proposta per **{cliente_input}**."}]
 
@@ -452,7 +473,12 @@ if prompt_to_process:
                         response_text = response.text
 
                     elif provider == "Groq":
-                        client = OpenAI(api_key=api_key, base_url="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)")
+                        # --- BLOCCO GROQ NATIVO ---
+                        if Groq is None:
+                            st.error("⚠️ Libreria 'groq' non trovata. Esegui pip install groq")
+                            st.stop()
+                        
+                        client = Groq(api_key=api_key.strip())
                         messages_groq = [{"role": "system", "content": FULL_SYSTEM_PROMPT}]
                         for m in st.session_state.messages[-6:]:
                             role = "assistant" if m["role"] == "model" else "user"
